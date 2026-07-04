@@ -1,2 +1,28 @@
-# ChineseIdomWordle
-A small program, which is used to practice our capacity, trying to create the Chinese version of wordle
+# 成语 Wordle
+
+一个中文成语版的 Wordle 猜词游戏。玩家在有限轮次内，通过候选字组合猜出目标成语。
+
+与原版 Wordle 不同，中文汉字数量庞大且输入不便，本游戏采用**候选字选择**的方式：每局提供一组打乱的汉字（包含目标字和干扰字），玩家从中选字组合成成语进行猜测。
+
+## 特性
+
+- 三档难度（简单/中等/困难），候选字数量和轮数随难度变化
+- 每日挑战 + 无限模式
+- 前后端分离架构，提供 REST API
+- 成语合法性校验，猜测反馈（位置正确/字对位置错/不在成语中）
+
+## 技术栈
+
+- **后端**: Python + FastAPI
+- **前端**: React + TypeScript？待定
+- **数据库**: SQLite（开发）/ PostgreSQL（生产）？是否需要数据库待定
+
+## 文档
+
+见 [docs/](./docs) 目录。
+
+## License
+
+MIT
+
+(c) 物化技（P.C.T.G.）2026
