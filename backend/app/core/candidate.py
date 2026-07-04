@@ -20,7 +20,7 @@ def _load_char_pool():
     }
     return _char_pool
 
-def generate_candidates(target_idiom: str, pool_size: int, difficulty: str, idiom_list: list[str] = None) -> list[str]:
+def generate_candidates(target_idiom: str, pool_size: int, difficulty: str, idiom_list: list[str] = None) -> list[str]: # type: ignore
     target_chars = list(target_idiom)
     decoy_count = pool_size - len(target_chars)
 

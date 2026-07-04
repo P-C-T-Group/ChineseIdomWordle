@@ -14,7 +14,7 @@ def evaluate_guess(guess: str, target: str) -> list[CharFeedback]:
     for i, c in enumerate(guess):
         if c == target_chars[i]:
             result[i]["status"] = "correct"
-            target_chars[i] = None  # 消耗掉
+            target_chars[i] = None  # type: ignore # 消耗掉
 
     # 第二轮：标记 present
     for i, c in enumerate(guess):
@@ -22,6 +22,6 @@ def evaluate_guess(guess: str, target: str) -> list[CharFeedback]:
             continue
         if c in target_chars:
             result[i]["status"] = "present"
-            target_chars[target_chars.index(c)] = None  # 消耗掉
+            target_chars[target_chars.index(c)] = None  # type: ignore # 消耗掉
 
     return [CharFeedback(**r) for r in result]

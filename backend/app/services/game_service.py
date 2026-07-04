@@ -126,7 +126,7 @@ def submit_guess(game_id: str, guess: str) -> tuple[list[CharFeedback], str, int
     if game.status != "playing":
         pinyin = game.target_pinyin
 
-    return feedback, game.status, game.round, answer, pinyin, None
+    return feedback, game.status, game.round, answer, pinyin, None # type: ignore
 
 
 def use_hint(game_id: str) -> tuple[list[str], str | None]:

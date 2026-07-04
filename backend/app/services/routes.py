@@ -38,7 +38,7 @@ def api_submit_guess(game_id: str, req: GuessRequest):
         guess=req.guess,
         result=feedback,
         round=round_num,
-        max_rounds=game.max_rounds,
+        max_rounds=game.max_rounds, # type: ignore
         status=status,
         answer=answer,
         pinyin=pinyin
@@ -55,8 +55,8 @@ def api_use_hint(game_id: str):
     return HintResponse(
         game_id=game_id,
         revealed_pinyins=pinyins,
-        hints_used=game.hints_used,
-        max_hints=game.max_hints
+        hints_used=game.hints_used, # type: ignore
+        max_hints=game.max_hints # type: ignore
     )
 
 
