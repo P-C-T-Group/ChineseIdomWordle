@@ -1,3 +1,7 @@
 /data/idiom.json @mywddbks
 /docs/* @GZYZhy
 /README.md @GZYZhy
+/data/character.json @GZYZhy
+/backend/app/* @GZYZhy
+/backend/tests/* @GZYZhy
+/backend/requirements.txt @GZYZhy
