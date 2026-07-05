@@ -33,8 +33,8 @@ idiom_list: list[Idiom] = []
 
 NONEGAME = Game(
     game_id='none',
-    mode=GameMode(None),
-    difficulty=Difficulty(None),
+    mode=GameMode("daily"),
+    difficulty=Difficulty("medium"),
     max_rounds=0,
     candidate_chars=[],
     target_idiom='',
