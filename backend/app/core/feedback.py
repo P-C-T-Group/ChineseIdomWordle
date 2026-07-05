@@ -10,18 +10,12 @@ def evaluate_guess(guess: str, target: str) -> list[CharFeedback]:
     result = [{"char": c, "status": "absent"} for c in guess]
     target_chars = list(target)
 
-    # 第一轮：标记 correct
     for i, c in enumerate(guess):
-        if c == target_chars[i]:
+        if c == target_chars[i]:  # 标记correct
             result[i]["status"] = "correct"
-            target_chars[i] = None  # type: ignore # 消耗掉
-
-    # 第二轮：标记 present
-    for i, c in enumerate(guess):
-        if result[i]["status"] == "correct":
-            continue
-        if c in target_chars:
+            target_chars[i] = ''
+        if c in target_chars:  # 标记present
             result[i]["status"] = "present"
-            target_chars[target_chars.index(c)] = None  # type: ignore # 消耗掉
+            target_chars[target_chars.index(c)] = ''
 
     return [CharFeedback(**r) for r in result]

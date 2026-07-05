@@ -28,17 +28,19 @@ def api_create_game(req: CreateGameRequest):
 @router.post("/games/{game_id}/guesses", response_model=GuessResponse)
 def api_submit_guess(game_id: str, req: GuessRequest):
     load_idioms()
-    feedback, status, round_num, answer, pinyin, error = submit_guess(game_id, req.guess)
+    feedback, status, round_num, answer, pinyin, error = submit_guess(
+        game_id, req.guess)
     if error:
         raise HTTPException(status_code=400, detail=error)
-    
+
     game = get_game(game_id)
+
     return GuessResponse(
         game_id=game_id,
         guess=req.guess,
         result=feedback,
         round=round_num,
-        max_rounds=game.max_rounds, # type: ignore
+        max_rounds=game.max_rounds,
         status=status,
         answer=answer,
         pinyin=pinyin
@@ -55,8 +57,8 @@ def api_use_hint(game_id: str):
     return HintResponse(
         game_id=game_id,
         revealed_pinyins=pinyins,
-        hints_used=game.hints_used, # type: ignore
-        max_hints=game.max_hints # type: ignore
+        hints_used=game.hints_used,
+        max_hints=game.max_hints
     )
 
 
@@ -64,12 +66,10 @@ def api_use_hint(game_id: str):
 def api_get_game(game_id: str):
     load_idioms()
     game = get_game(game_id)
-    if not game:
-        raise HTTPException(status_code=404, detail="游戏不存在")
-    
+
     answer = None
     pinyin = None
-    
+
     if game.status != "playing":
         answer = game.target_idiom
         pinyin = game.target_pinyin

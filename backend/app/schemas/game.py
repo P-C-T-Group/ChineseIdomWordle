@@ -64,4 +64,3 @@ class GameStateResponse(BaseModel):
     hints_used: int = 0
     max_hints: int = 2
     revealed_pinyins: list[str] = []
-

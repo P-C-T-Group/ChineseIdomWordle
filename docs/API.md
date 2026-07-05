@@ -11,11 +11,12 @@
 
 ### 创建游戏
 
-```
+```http
 POST /api/games
 ```
 
 请求体：
+
 ```json
 {
   "mode": "unlimited",     // daily | unlimited
@@ -26,6 +27,7 @@ POST /api/games
 > `mode` 默认 `unlimited`，`difficulty` 默认 `medium`。
 
 响应：
+
 ```json
 {
   "game_id": "uuid",
@@ -42,11 +44,12 @@ POST /api/games
 
 ### 提交猜测
 
-```
+```http
 POST /api/games/{game_id}/guesses
 ```
 
 请求体：
+
 ```json
 {
   "guess": "心想事成"
@@ -56,6 +59,7 @@ POST /api/games/{game_id}/guesses
 > 输入校验：必须为 4 个汉字。
 
 响应（游戏中）：
+
 ```json
 {
   "game_id": "uuid",
@@ -77,19 +81,21 @@ POST /api/games/{game_id}/guesses
 > `answer` 和 `pinyin` 仅在游戏结束（`won` 或 `lost`）时返回。
 
 反馈状态说明：
+
 - `correct`：字在成语中且位置正确（绿色）
 - `present`：字在成语中但位置不对（黄色）
 - `absent`：字不在成语中（灰色）
 
 ### 使用提示
 
-```
+```http
 POST /api/games/{game_id}/hints
 ```
 
 无请求体。
 
 响应：
+
 ```json
 {
   "game_id": "uuid",
@@ -103,13 +109,14 @@ POST /api/games/{game_id}/hints
 
 ### 查询游戏状态
 
-```
+```http
 GET /api/games/{game_id}
 ```
 
 返回完整游戏信息，包括历史猜测记录。
 
 响应（进行中）：
+
 ```json
 {
   "game_id": "uuid",
@@ -134,7 +141,7 @@ GET /api/games/{game_id}
 
 > **TODO**: 统计接口尚未实现。
 
-```
+```http
 GET /api/stats?player_id={player_id}
 ```
 
@@ -149,6 +156,7 @@ GET /api/stats?player_id={player_id}
 ```
 
 常见错误：
+
 - `游戏不存在`：game_id 无效（404）
 - `游戏已结束`：对已结束的游戏提交猜测或使用提示（400）
 - `必须输入4字成语` / `只能包含汉字`：输入校验失败（400）

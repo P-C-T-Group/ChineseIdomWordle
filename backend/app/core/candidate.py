@@ -5,11 +5,13 @@ import random
 # 加载干扰字库
 _char_pool = None
 
+
 def _load_char_pool():
     global _char_pool
     if _char_pool is not None:
         return _char_pool
-    data_path = os.path.join(os.path.dirname(__file__), "..", "..", "..", "data", "character.json")
+    data_path = os.path.join(os.path.dirname(
+        __file__), "..", "..", "..", "data", "character.json")
     with open(data_path, "r", encoding="utf-8") as f:
         raw = json.load(f)["characters"]
     # 去重
@@ -20,7 +22,8 @@ def _load_char_pool():
     }
     return _char_pool
 
-def generate_candidates(target_idiom: str, pool_size: int, difficulty: str, idiom_list: list[str] = None) -> list[str]: # type: ignore
+
+def generate_candidates(target_idiom: str, pool_size: int, difficulty: str, idiom_list: list[str] = []) -> list[str]:
     target_chars = list(target_idiom)
     decoy_count = pool_size - len(target_chars)
 
@@ -37,7 +40,8 @@ def generate_candidates(target_idiom: str, pool_size: int, difficulty: str, idio
                 if c not in target_chars and c not in decoys:
                     all_chars.add(c)
         remaining = decoy_count - len(decoys)
-        decoys.extend(random.sample(list(all_chars), min(remaining, len(all_chars))))
+        decoys.extend(random.sample(list(all_chars),
+                      min(remaining, len(all_chars))))
 
     candidates = target_chars + decoys
     random.shuffle(candidates)

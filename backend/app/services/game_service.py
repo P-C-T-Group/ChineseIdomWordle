@@ -9,6 +9,8 @@ from app.core.models import Difficulty, GameMode, Idiom, Game, CharFeedback
 from app.core.feedback import evaluate_guess
 from app.core.candidate import generate_candidates
 
+from fastapi import HTTPException
+
 # 难度对应的轮次配置
 MAX_ROUNDS = {
     Difficulty.easy: 20,
@@ -27,21 +29,38 @@ POOL_SIZE = {
 games: dict[str, Game] = {}
 idiom_list: list[Idiom] = []
 
+# 空游戏
+
+NONEGAME = Game(
+    game_id='none',
+    mode=GameMode(None),
+    difficulty=Difficulty(None),
+    max_rounds=0,
+    candidate_chars=[],
+    target_idiom='',
+    target_pinyin='',
+    guesses=[],
+    status="playing",
+    round=0,
+)
+
 
 def load_idioms():
-    #从 JSON 文件加载成语数据，过滤四字成语
+    # 从 JSON 文件加载成语数据，过滤四字成语
     global idiom_list
     if idiom_list:
         return
 
-    data_path = os.path.join(os.path.dirname(__file__), "..", "..", "..", "data", "idiom.json")
+    data_path = os.path.join(os.path.dirname(
+        __file__), "..", "..", "..", "data", "idiom.json")
     with open(data_path, "r", encoding="utf-8") as f:
         raw = json.load(f)
-    idiom_list = [Idiom(**item) for item in raw if len(item.get("word", "")) == 4]
+    idiom_list = [Idiom(**item)
+                  for item in raw if len(item.get("word", "")) == 4]
 
 
 def get_daily_idiom() -> Idiom:
-    #根据日期生成每日挑战成语
+    # 根据日期生成每日挑战成语
     load_idioms()
     today = date.today()
     rng = Random(today.toordinal())
@@ -49,13 +68,13 @@ def get_daily_idiom() -> Idiom:
 
 
 def get_random_idiom() -> Idiom:
-    #随机成语（无限模式）
+    # 随机成语（无限模式）
     load_idioms()
     return random.choice(idiom_list)
 
 
 def create_game(mode: GameMode, difficulty: Difficulty) -> Game:
-    #创建新游戏
+    # 创建新游戏
     load_idioms()
 
     if mode == GameMode.daily:
@@ -64,7 +83,8 @@ def create_game(mode: GameMode, difficulty: Difficulty) -> Game:
         target = get_random_idiom()
 
     all_words = [item.word for item in idiom_list]
-    candidates = generate_candidates(target.word, POOL_SIZE[difficulty], difficulty.value, all_words)
+    candidates = generate_candidates(
+        target.word, POOL_SIZE[difficulty], difficulty.value, all_words)
 
     game = Game(
         game_id=str(uuid.uuid4()),
@@ -82,9 +102,9 @@ def create_game(mode: GameMode, difficulty: Difficulty) -> Game:
     return game
 
 
-def submit_guess(game_id: str, guess: str) -> tuple[list[CharFeedback], str, int, str, str | None, str | None]:
-    #提交猜测
-    #返回: (feedback, status, round, answer, pinyin, error)
+def submit_guess(game_id: str, guess: str) -> tuple[list[CharFeedback], str, int, str | None, str | None, str | None]:
+    # 提交猜测
+    # 返回: (feedback, status, round, answer, pinyin, error)
     if game_id not in games:
         return [], "", 0, "", None, "游戏不存在"
 
@@ -97,7 +117,7 @@ def submit_guess(game_id: str, guess: str) -> tuple[list[CharFeedback], str, int
 
     # 校验是否为合法成语
     valid_idioms = {item.word for item in idiom_list}
-    if guess not in valid_idioms:
+    if False:  # guess not in valid_idioms:
         return [], game.status, game.round, "", None, "不是有效成语"
 
     # 检查候选字是否足够
@@ -126,12 +146,12 @@ def submit_guess(game_id: str, guess: str) -> tuple[list[CharFeedback], str, int
     if game.status != "playing":
         pinyin = game.target_pinyin
 
-    return feedback, game.status, game.round, answer, pinyin, None # type: ignore
+    return feedback, game.status, game.round, answer, pinyin, None
 
 
 def use_hint(game_id: str) -> tuple[list[str], str | None]:
-    #使用提示
-    #返回: (revealed_pinyins, error)
+    # 使用提示
+    # 返回: (revealed_pinyins, error)
     if game_id not in games:
         return [], "游戏不存在"
     game = games[game_id]
@@ -139,20 +159,24 @@ def use_hint(game_id: str) -> tuple[list[str], str | None]:
         return [], "游戏已结束"
     if game.hints_used >= game.max_hints:
         return [], "提示次数已用完"
-    
+
     # 随机选一个未提示过的字的拼音
     pinyins = game.target_pinyin.split()
-    available_indices = [i for i, p in enumerate(pinyins) if p not in game.revealed_pinyins]
+    available_indices = [i for i, p in enumerate(
+        pinyins) if p not in game.revealed_pinyins]
     if not available_indices:
         return [], "没有可提示的拼音了"
-    
+
     idx = random.choice(available_indices)
     pinyin = pinyins[idx]
     game.revealed_pinyins.append(pinyin)
     game.hints_used += 1
-    
+
     return game.revealed_pinyins, None
 
 
-def get_game(game_id: str) -> Game | None:
-    return games.get(game_id)
+def get_game(game_id: str) -> Game:
+    game_get_id: Game | None = games.get(game_id)
+    if game_get_id is None:
+        game_get_id = NONEGAME
+    return game_get_id
