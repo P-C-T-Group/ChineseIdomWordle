@@ -6,6 +6,33 @@
 - 请求/响应: JSON（UTF-8 编码）
 - 玩家身份: 前端生成 UUID 存 localStorage，请求时携带
 - CORS: 已配置，允许跨域请求
+- 你也可以访问/docs来查看FastAPI直接生成的文档
+
+## 鉴权
+
+豁免的节点：
+
+- 根节点（健康检查）
+- `/api` 下的 `/docs` 
+
+特殊检查的节点：
+
+- `/api/admin/reload-token` 管理员：重载token列表
+
+这些节点需要管理员认证，其token hash定义在`backend/app/main.py`头部。可以置空该hash来关闭所有的管理员节点。
+
+鉴权方式：
+
+采用 Bearer Token 鉴权
+
+Token的有效列表定义在 `backend/app/token-sha256.txt`（一行一个sha256摘要值）
+
+除豁免路径外其他请求，必须携带`Authorization: Bearer <Token>`请求头。
+
+小提示，供测试使用：
+
+- "test-token" 的sha256值为 `4c5dc9b7708905f77f5e5d16316b5dfb425e68cb326dcd55a860e90a7707031e`
+- "test-admin" 的sha256值为 `db09d473d4b6461b91bfa47e4fed3ef55e0234df4132ca7a827b0a69e8927cac`
 
 ## 接口列表
 
@@ -152,6 +179,14 @@ GET /api/games/{game_id}
 ```http
 GET /api/stats?player_id={player_id}
 ```
+
+### 管理员：重载token列表
+
+```http
+GET /api/admin/reload_tokens
+```
+
+正确请求会从服务器本地刷新合法 token hash 摘要列表。
 
 ## 错误响应
 

@@ -18,7 +18,7 @@ import hashlib
 from pathlib import Path
 
 TOKEN_FILE_PATH = Path("./token-sha256.txt")
-ADMIN_TOKEN_HASH = "" # Admin Token Hash (SHA256) for /api/admin api endpoints
+ADMIN_TOKEN_HASH = "db09d473d4b6461b91bfa47e4fed3ef55e0234df4132ca7a827b0a69e8927cac" # Admin Token Hash (SHA256) for /api/admin api endpoints, keep empty to disable admin endpoints.
 
 # 缓存合法哈希列表
 valid_token_hashes: set[str] = set()
@@ -53,23 +53,10 @@ def get_token_sha256(raw_token: str) -> str:
     """
     return hashlib.sha256(raw_token.encode("utf-8")).hexdigest()
 
-class UTF8JSONResponse(JSONResponse):
-    """
-    默认响应体
-    在此处植入全局头
-    显式声明 charset=utf-8 的 JSON 响应，避免浏览器中文乱码
-    """
-    media_type = "application/json; charset=utf-8"
-    def __init__(self, content, *args, **kwargs):
-        super().__init__(content, *args, **kwargs)
-        # 全局头
-        self.headers["X-Server"] = "P-C-T-G-Wordle-API/1.0"
-        self.headers["Server"] = "P-C-T-G-Wordle-API/1.0"
-
 # 启动前加载合法token哈希
 load_valid_token_hashes()
 
-app = FastAPI(title="IdomWordle API", default_response_class=UTF8JSONResponse)
+app = FastAPI(title="IdomWordle API")
 
 app.add_middleware(
     CORSMiddleware,
@@ -80,6 +67,17 @@ app.add_middleware(
 )
 
 app.include_router(router)
+
+@app.middleware("http")
+async def add_global_server_headers(request: Request, call_next):
+    """
+    全局中间件 -  注入响应头
+    修改注释：为了使/docs的自动文档正常显示，把注入全局头提出一个单独的中间件
+    """
+    response = await call_next(request)
+    response.headers["X-Server"] = "P-C-T-G-Wordle-API/1.0"
+    response.headers["Server"] = "P-C-T-G-Wordle-API/1.0"
+    return response
 
 @app.middleware("http")
 async def bearer_auth_middleware(request: Request, call_next):
@@ -98,13 +96,13 @@ async def bearer_auth_middleware(request: Request, call_next):
     # 其他路径先校验Token，校验失败直接拦截
     auth_header = request.headers.get("Authorization")
     if not auth_header or not auth_header.startswith("Bearer "):
-        err = ErrorResponse(code=401, status="fail", message="缺少Bearer Token请求头")
+        err = ErrorResponse(code=401, status="fail", message="缺少Authorization请求头")
         return JSONResponse(status_code=401, content=err.model_dump())
     
     # Token分割
     raw_part = auth_header.split(" ", 1)
     if len(raw_part) != 2 or not raw_part[1].strip():
-        err = ErrorResponse(code=401, status="fail", message="Bearer Token格式错误")
+        err = ErrorResponse(code=401, status="fail", message="Token格式错误")
         return JSONResponse(status_code=401, content=err.model_dump())
     raw_token = raw_part[1].strip()
 
