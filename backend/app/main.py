@@ -1,15 +1,24 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, Response
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from app.services.routes import router
 
 
 class UTF8JSONResponse(JSONResponse):
-    """显式声明 charset=utf-8 的 JSON 响应，避免浏览器中文乱码"""
+    """
+    默认响应体
+    在此处植入全局头
+    显式声明 charset=utf-8 的 JSON 响应，避免浏览器中文乱码
+    """
     media_type = "application/json; charset=utf-8"
+    def __init__(self, content, *args, **kwargs):
+        super().__init__(content, *args, **kwargs)
+        # 全局头
+        self.headers["X-Server"] = "P-C-T-G-Wordle-API/1.0"
+        self.headers["Server"] = "P-C-T-G-Wordle-API/1.0"
 
 
-app = FastAPI(title="成语 Wordle API", default_response_class=UTF8JSONResponse)
+app = FastAPI(title="IdomWordle API", default_response_class=UTF8JSONResponse)
 
 app.add_middleware(
     CORSMiddleware,
@@ -21,7 +30,12 @@ app.add_middleware(
 
 app.include_router(router)
 
-
 @app.get("/")
-def read_root():
-    return {"message": "欢迎使用成语 Wordle API"}
+def read_root(response: Response):
+    result = {
+        "code": 200,
+        "status": "success",
+        "message": "Welcome to Wordle API by P.C.T.G.",
+    }
+    response.headers["X-Server-Health"] = "OK"
+    return result
