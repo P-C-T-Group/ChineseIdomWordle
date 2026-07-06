@@ -13,7 +13,7 @@
 豁免的节点：
 
 - 根节点（健康检查）
-- `/api` 下的 `/docs`
+- `/docs` FastAPI 自动swagger
 
 特殊检查的节点：
 
