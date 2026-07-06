@@ -30,6 +30,8 @@ POST /api/games
 
 ```json
 {
+  "code": 200,
+  "status": "success",
   "game_id": "uuid",
   "mode": "unlimited",
   "difficulty": "medium",
@@ -62,6 +64,8 @@ POST /api/games/{game_id}/guesses
 
 ```json
 {
+  "code": 200,
+  "status": "success",
   "game_id": "uuid",
   "guess": "心想事成",
   "result": [
@@ -98,6 +102,8 @@ POST /api/games/{game_id}/hints
 
 ```json
 {
+  "code": 200,
+  "status": "success",
   "game_id": "uuid",
   "revealed_pinyins": ["xīn"],
   "hints_used": 1,
@@ -119,12 +125,14 @@ GET /api/games/{game_id}
 
 ```json
 {
+  "code": 200,
+  "status": "success",
   "game_id": "uuid",
   "mode": "unlimited",
   "difficulty": "medium",
   "max_rounds": 16,
   "candidate_chars": ["心", "想", "事", "成", "天", "人", "风", "月", "如", "意", "安", "好", "高", "兴"],
-  "status": "playing",
+  "game_status": "playing",
   "guesses": [...],
   "round": 2,
   "answer": null,
@@ -147,11 +155,19 @@ GET /api/stats?player_id={player_id}
 
 ## 错误响应
 
-所有接口在出错时返回 HTTP 400（或 404），格式如下：
+错误码：
+
+- `400`: 非法请求
+- `422`: 请求参数错误
+- `404`: 游戏或API终结点不存在
+
+出错响应体：
 
 ```json
 {
-  "detail": "错误描述"
+  "code": {http_code},
+  "status": "fail",
+  "message": "错误描述"
 }
 ```
 
