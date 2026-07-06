@@ -76,7 +76,7 @@ POST /api/games/{game_id}/guesses
   ],
   "round": 1,
   "max_rounds": 16,
-  "status": "won",
+  "game_status": "won",
   "answer": "心想事成",
   "pinyin": "xīn xiǎng shì chéng"
 }
