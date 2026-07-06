@@ -17,6 +17,10 @@ from starlette.exceptions import HTTPException as StarletteHTTPException
 import hashlib
 from pathlib import Path
 
+RED = "\033[31m"
+GREEN = "\033[32m"
+RESET = "\033[0m"
+
 TOKEN_FILE_PATH = Path("./token-sha256.txt")
 # Admin Token Hash (SHA256) for /api/admin api endpoints, keep empty to disable admin endpoints.
 ADMIN_TOKEN_HASH = "db09d473d4b6461b91bfa47e4fed3ef55e0234df4132ca7a827b0a69e8927cac"
@@ -36,19 +40,23 @@ def load_valid_token_hashes() -> None:
     # 判断文件是否存在
     if not TOKEN_FILE_PATH.exists():
         raise RuntimeError(
-            f"ERROR:     Token摘要文件（{TOKEN_FILE_PATH}）不存在，如需关闭Token鉴权，请创建空文件。")
+            f"\n {RED}Token摘要文件（{TOKEN_FILE_PATH}）不存在，如需关闭Token鉴权，请创建空文件。 \n 请使用ctrl+c退出程序后创建文件。{RESET}"
+        )
     with open(TOKEN_FILE_PATH, "r", encoding="utf-8") as f:
         for line in f:
             line = line.strip()
             if line:  # 跳过空行
                 valid_token_hashes.add(line)
-    # 新增逻辑：空集合代表空文件，关闭鉴权
     if len(valid_token_hashes) == 0:
         enable_auth = False
-        print("INFO:     [Auth] Token摘要列表无有效Token，已自动关闭全局Token校验")
+        print(
+            f"{GREEN}INFO{RESET}:     [Auth] Token摘要列表无有效Token，已自动关闭全局Token校验"
+        )
     else:
         enable_auth = True
-        print(f"INFO:     [Auth] 成功加载 {len(valid_token_hashes)} 条合法Token摘要")
+        print(
+            f"{GREEN}INFO{RESET}:     [Auth] 成功加载 {len(valid_token_hashes)} 条合法Token摘要"
+        )
 
 
 def get_token_sha256(raw_token: str) -> str:
