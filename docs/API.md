@@ -64,7 +64,7 @@ POST /api/games
   "difficulty": "medium",
   "max_rounds": 16,
   "candidate_chars": ["心", "想", "事", "成", "天", "人", "风", "月", "如", "意", "安", "好", "高", "兴"],
-  "status": "playing",
+  "game_status": "playing",
   "guesses": []
 }
 ```
