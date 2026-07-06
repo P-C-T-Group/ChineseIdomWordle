@@ -1,16 +1,20 @@
 from fastapi import APIRouter, HTTPException, Response
 from app.schemas.game import (
-    CreateGameRequest, 
+    CreateGameRequest,
     CreateGameResponse,
-    GuessRequest, 
+    GuessRequest,
     GuessResponse,
-    GameStateResponse, 
-    HintResponse, 
-    ErrorResponse
+    GameStateResponse,
+    HintResponse
 )
 from app.services.game_service import (
-    create_game, submit_guess, get_game, use_hint, idiom_list, load_idioms
+    create_game,
+    submit_guess,
+    get_game,
+    use_hint,
+    load_idioms
 )
+
 
 router = APIRouter(prefix="/api")
 

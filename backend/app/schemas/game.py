@@ -1,3 +1,4 @@
+from fastapi.responses import JSONResponse
 from pydantic import BaseModel, field_validator
 from typing import Optional
 from app.core.models import Difficulty, GameMode, CharFeedback
