@@ -1,6 +1,7 @@
 from fastapi import FastAPI, Response, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+from fastapi.exceptions import RequestValidationError 
 from app.services.routes import router
 from app.schemas.game import ErrorResponse
 
@@ -32,6 +33,9 @@ app.include_router(router)
 
 @app.get("/")
 def read_root(response: Response):
+    """
+    根路径 - API 入口信息
+    """
     result = {
         "code": 200,
         "status": "success",
@@ -42,6 +46,9 @@ def read_root(response: Response):
 
 @app.exception_handler(HTTPException)
 async def custom_http_exception_handler(request: Request, exc: HTTPException):
+    """
+    自定义格式化 HTTP 异常处理器
+    """
     error_data = ErrorResponse(
         code=exc.status_code,
         status="fail",
@@ -51,3 +58,18 @@ async def custom_http_exception_handler(request: Request, exc: HTTPException):
         status_code=exc.status_code,
         content=error_data.model_dump()
     )
+
+@app.exception_handler(RequestValidationError)
+async def validation_exception_handler(request: Request, exc: RequestValidationError):
+    '''
+    格式化处理请求参数验证错误
+    '''
+    # 提取第一条错误提示作为统一message
+    first_err = exc.errors()[0]
+    msg = f"{first_err['loc'][-1]} 参数非法：{first_err['msg']}"
+    err = ErrorResponse(
+        code=422,
+        status="fail",
+        message=msg
+    )
+    return JSONResponse(status_code=422, content=err.model_dump())
