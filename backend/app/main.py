@@ -1,8 +1,8 @@
-from fastapi import FastAPI, Response
+from fastapi import FastAPI, Response, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from app.services.routes import router
-
+from app.schemas.game import ErrorResponse
 
 class UTF8JSONResponse(JSONResponse):
     """
@@ -39,3 +39,15 @@ def read_root(response: Response):
     }
     response.headers["X-Server-Health"] = "OK"
     return result
+
+@app.exception_handler(HTTPException)
+async def custom_http_exception_handler(request: Request, exc: HTTPException):
+    error_data = ErrorResponse(
+        code=exc.status_code,
+        status="fail",
+        message=exc.detail
+    )
+    return JSONResponse(
+        status_code=exc.status_code,
+        content=error_data.model_dump()
+    )

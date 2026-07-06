@@ -1,8 +1,12 @@
 from fastapi import APIRouter, HTTPException, Response
 from app.schemas.game import (
-    CreateGameRequest, CreateGameResponse,
-    GuessRequest, GuessResponse,
-    GameStateResponse, HintResponse
+    CreateGameRequest, 
+    CreateGameResponse,
+    GuessRequest, 
+    GuessResponse,
+    GameStateResponse, 
+    HintResponse, 
+    ErrorResponse
 )
 from app.services.game_service import (
     create_game, submit_guess, get_game, use_hint, idiom_list, load_idioms
@@ -20,7 +24,7 @@ def api_create_game(req: CreateGameRequest, response: Response):
         difficulty=game.difficulty,
         max_rounds=game.max_rounds,
         candidate_chars=game.candidate_chars,
-        status=game.status,
+        game_status=game.game_status,
         guesses=game.guesses
     )
 
@@ -70,7 +74,7 @@ def api_get_game(game_id: str, response: Response):
     answer = None
     pinyin = None
 
-    if game.status != "playing":
+    if game.game_status != "playing":
         answer = game.target_idiom
         pinyin = game.target_pinyin
 
@@ -80,7 +84,7 @@ def api_get_game(game_id: str, response: Response):
         difficulty=game.difficulty,
         max_rounds=game.max_rounds,
         candidate_chars=game.candidate_chars,
-        status=game.status,
+        game_status=game.game_status,
         guesses=game.guesses,
         round=game.round,
         answer=answer,
