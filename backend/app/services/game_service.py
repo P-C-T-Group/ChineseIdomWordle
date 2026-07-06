@@ -40,7 +40,7 @@ NONEGAME = Game(
     target_idiom='',
     target_pinyin='',
     guesses=[],
-    status="playing",
+    game_status="playing",
     round=0,
 )
 
@@ -95,7 +95,7 @@ def create_game(mode: GameMode, difficulty: Difficulty) -> Game:
         target_idiom=target.word,
         target_pinyin=target.pinyin,
         guesses=[],
-        status="playing",
+        game_status="playing",
         round=0,
     )
     games[game.game_id] = game
@@ -109,16 +109,16 @@ def submit_guess(game_id: str, guess: str) -> tuple[list[CharFeedback], str, int
         return [], "", 0, "", None, "游戏不存在"
 
     game = games[game_id]
-    if game.status != "playing":
-        return [], game.status, game.round, game.target_idiom, None, "游戏已结束"
+    if game.game_status != "playing":
+        return [], game.game_status, game.round, game.target_idiom, None, "游戏已结束"
 
     if len(guess) != 4:
-        return [], game.status, game.round, "", None, "必须输入4字成语"
+        return [], game.game_status, game.round, "", None, "必须输入4字成语"
 
     # 校验是否为合法成语
     valid_idioms = {item.word for item in idiom_list}
     if False:  # guess not in valid_idioms:
-        return [], game.status, game.round, "", None, "不是有效成语"
+        return [], game.game_status, game.round, "", None, "不是有效成语"
 
     # 检查候选字是否足够
     guess_chars = list(guess)
@@ -127,7 +127,7 @@ def submit_guess(game_id: str, guess: str) -> tuple[list[CharFeedback], str, int
         if c in available:
             available.remove(c)
         else:
-            return [], game.status, game.round, "", None, f"字\"{c}\"不在候选字中"
+            return [], game.game_status, game.round, "", None, f"字\"{c}\"不在候选字中"
 
     feedback = evaluate_guess(guess, game.target_idiom)
     game.guesses.append(feedback)
@@ -137,16 +137,16 @@ def submit_guess(game_id: str, guess: str) -> tuple[list[CharFeedback], str, int
     pinyin = None
 
     if guess == game.target_idiom:
-        game.status = "won"
+        game.game_status = "won"
         answer = game.target_idiom
     elif game.round >= game.max_rounds:
-        game.status = "lost"
+        game.game_status = "lost"
         answer = game.target_idiom
 
-    if game.status != "playing":
+    if game.game_status != "playing":
         pinyin = game.target_pinyin
 
-    return feedback, game.status, game.round, answer, pinyin, None
+    return feedback, game.game_status, game.round, answer, pinyin, None
 
 
 def use_hint(game_id: str) -> tuple[list[str], str | None]:
@@ -155,7 +155,7 @@ def use_hint(game_id: str) -> tuple[list[str], str | None]:
     if game_id not in games:
         return [], "游戏不存在"
     game = games[game_id]
-    if game.status != "playing":
+    if game.game_status != "playing":
         return [], "游戏已结束"
     if game.hints_used >= game.max_hints:
         return [], "提示次数已用完"
