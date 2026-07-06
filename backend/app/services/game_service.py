@@ -9,8 +9,6 @@ from app.core.models import Difficulty, GameMode, Idiom, Game, CharFeedback
 from app.core.feedback import evaluate_guess
 from app.core.candidate import generate_candidates
 
-from fastapi import HTTPException
-
 # 难度对应的轮次配置
 MAX_ROUNDS = {
     Difficulty.easy: 20,
@@ -115,10 +113,10 @@ def submit_guess(game_id: str, guess: str) -> tuple[list[CharFeedback], str, int
     if len(guess) != 4:
         return [], game.game_status, game.round, "", None, "必须输入4字成语"
 
-    # 校验是否为合法成语
-    valid_idioms = {item.word for item in idiom_list}
-    if False:  # guess not in valid_idioms:
-        return [], game.game_status, game.round, "", None, "不是有效成语"
+    # 校验是否为合法成语-为降低游戏难度而关闭，提供给玩家“暴力猜词“的可能性
+    # valid_idioms = {item.word for item in idiom_list}
+    # if guess not in valid_idioms:
+    #     return [], game.game_status, game.round, "", None, "不是有效成语"
 
     # 检查候选字是否足够
     guess_chars = list(guess)

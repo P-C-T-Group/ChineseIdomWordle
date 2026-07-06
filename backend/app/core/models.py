@@ -1,7 +1,5 @@
 from pydantic import BaseModel
 from enum import Enum
-from typing import Optional
-
 
 class Difficulty(str, Enum):
     easy = "easy"
