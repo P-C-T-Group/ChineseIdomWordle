@@ -75,6 +75,7 @@ class GameStateResponse(BaseModel):
     max_hints: int = 2
     revealed_pinyins: list[str] = []
 
+
 class ErrorResponse(BaseModel):
     code: int
     status: str = "fail"

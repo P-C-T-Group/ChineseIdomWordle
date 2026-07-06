@@ -9,7 +9,7 @@ CODEOWNERS: @GZYZhy
 from fastapi import FastAPI, Response, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
-from fastapi.exceptions import RequestValidationError 
+from fastapi.exceptions import RequestValidationError
 from app.services.routes import router
 from app.schemas.game import ErrorResponse
 from starlette.exceptions import HTTPException as StarletteHTTPException
@@ -18,11 +18,13 @@ import hashlib
 from pathlib import Path
 
 TOKEN_FILE_PATH = Path("./token-sha256.txt")
-ADMIN_TOKEN_HASH = "db09d473d4b6461b91bfa47e4fed3ef55e0234df4132ca7a827b0a69e8927cac" # Admin Token Hash (SHA256) for /api/admin api endpoints, keep empty to disable admin endpoints.
+# Admin Token Hash (SHA256) for /api/admin api endpoints, keep empty to disable admin endpoints.
+ADMIN_TOKEN_HASH = "db09d473d4b6461b91bfa47e4fed3ef55e0234df4132ca7a827b0a69e8927cac"
 
 # 缓存合法哈希列表
 valid_token_hashes: set[str] = set()
 enable_auth: bool = True
+
 
 def load_valid_token_hashes() -> None:
     """
@@ -33,11 +35,12 @@ def load_valid_token_hashes() -> None:
     valid_token_hashes.clear()
     # 判断文件是否存在
     if not TOKEN_FILE_PATH.exists():
-        raise RuntimeError(f"ERROR:     Token摘要文件（{TOKEN_FILE_PATH}）不存在，如需关闭Token鉴权，请创建空文件。")
+        raise RuntimeError(
+            f"ERROR:     Token摘要文件（{TOKEN_FILE_PATH}）不存在，如需关闭Token鉴权，请创建空文件。")
     with open(TOKEN_FILE_PATH, "r", encoding="utf-8") as f:
         for line in f:
             line = line.strip()
-            if line: # 跳过空行
+            if line:  # 跳过空行
                 valid_token_hashes.add(line)
     # 新增逻辑：空集合代表空文件，关闭鉴权
     if len(valid_token_hashes) == 0:
@@ -47,11 +50,13 @@ def load_valid_token_hashes() -> None:
         enable_auth = True
         print(f"INFO:     [Auth] 成功加载 {len(valid_token_hashes)} 条合法Token摘要")
 
+
 def get_token_sha256(raw_token: str) -> str:
     """
     计算传入token的sha256摘要
     """
     return hashlib.sha256(raw_token.encode("utf-8")).hexdigest()
+
 
 # 启动前加载合法token哈希
 load_valid_token_hashes()
@@ -68,6 +73,7 @@ app.add_middleware(
 
 app.include_router(router)
 
+
 @app.middleware("http")
 async def add_global_server_headers(request: Request, call_next):
     """
@@ -79,6 +85,7 @@ async def add_global_server_headers(request: Request, call_next):
     response.headers["Server"] = "P-C-T-G-Wordle-API/1.0"
     return response
 
+
 @app.middleware("http")
 async def bearer_auth_middleware(request: Request, call_next):
     """
@@ -88,17 +95,18 @@ async def bearer_auth_middleware(request: Request, call_next):
     # 根路径（健康检查）、重载token端点、（可能的）文档端点免Token
     if current_path in ("/", "/api/admin/reload-token", "/docs", "/redoc", "/openapi.json"):
         return await call_next(request)
-    
+
     # Token Auth关闭则直接放行
     if not enable_auth:
         return await call_next(request)
-    
+
     # 其他路径先校验Token，校验失败直接拦截
     auth_header = request.headers.get("Authorization")
     if not auth_header or not auth_header.startswith("Bearer "):
-        err = ErrorResponse(code=401, status="fail", message="缺少Authorization请求头")
+        err = ErrorResponse(code=401, status="fail",
+                            message="缺少Authorization请求头")
         return JSONResponse(status_code=401, content=err.model_dump())
-    
+
     # Token分割
     raw_part = auth_header.split(" ", 1)
     if len(raw_part) != 2 or not raw_part[1].strip():
@@ -115,6 +123,7 @@ async def bearer_auth_middleware(request: Request, call_next):
     response = await call_next(request)
     return response
 
+
 @app.get("/")
 def read_root(response: Response):
     """
@@ -128,6 +137,7 @@ def read_root(response: Response):
     response.headers["X-Server-Health"] = "OK"
     return result
 
+
 @app.get("/api/admin/reload-token")
 def reload_token_list(request: Request):
     """
@@ -137,13 +147,14 @@ def reload_token_list(request: Request):
     if auth_header.startswith("Bearer "):
         parts = auth_header.split(" ", 1)
         if len(parts) != 2 or not parts[1].strip():
-            return JSONResponse(status_code=403, content=ErrorResponse(code=403,status="fail",message="管理员Token格式错误").model_dump())
+            return JSONResponse(status_code=403, content=ErrorResponse(code=403, status="fail", message="管理员Token格式错误").model_dump())
         admin_token = parts[1].strip()
         if get_token_sha256(admin_token) == ADMIN_TOKEN_HASH:
             load_valid_token_hashes()
-            return {"code":200,"message":"重载成功","total_valid":len(valid_token_hashes)}
+            return {"code": 200, "message": "重载成功", "total_valid": len(valid_token_hashes)}
     # 无管理员权限
-    return JSONResponse(status_code=403, content=ErrorResponse(code=403,status="fail",message="无管理员操作权限").model_dump())
+    return JSONResponse(status_code=403, content=ErrorResponse(code=403, status="fail", message="无管理员操作权限").model_dump())
+
 
 @app.exception_handler(StarletteHTTPException)
 async def starlette_http_exception_handler(request: Request, exc: StarletteHTTPException):
@@ -160,6 +171,7 @@ async def starlette_http_exception_handler(request: Request, exc: StarletteHTTPE
         content=err.model_dump()
     )
 
+
 @app.exception_handler(HTTPException)
 async def custom_http_exception_handler(request: Request, exc: HTTPException):
     """
@@ -175,6 +187,7 @@ async def custom_http_exception_handler(request: Request, exc: HTTPException):
         content=error_data.model_dump()
     )
 
+
 @app.exception_handler(RequestValidationError)
 async def validation_exception_handler(request: Request, exc: RequestValidationError):
     '''
@@ -189,6 +202,7 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
         message=msg
     )
     return JSONResponse(status_code=422, content=err.model_dump())
+
 
 @app.exception_handler(Exception)
 async def global_unknown_exception_handler(request: Request, exc: Exception):
