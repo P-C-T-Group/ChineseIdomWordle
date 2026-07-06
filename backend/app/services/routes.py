@@ -1,4 +1,4 @@
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Response
 from app.schemas.game import (
     CreateGameRequest, CreateGameResponse,
     GuessRequest, GuessResponse,
@@ -12,7 +12,7 @@ router = APIRouter(prefix="/api")
 
 
 @router.post("/games", response_model=CreateGameResponse)
-def api_create_game(req: CreateGameRequest):
+def api_create_game(req: CreateGameRequest, response: Response):
     game = create_game(req.mode, req.difficulty)
     return CreateGameResponse(
         game_id=game.game_id,
@@ -26,7 +26,7 @@ def api_create_game(req: CreateGameRequest):
 
 
 @router.post("/games/{game_id}/guesses", response_model=GuessResponse)
-def api_submit_guess(game_id: str, req: GuessRequest):
+def api_submit_guess(game_id: str, req: GuessRequest, response: Response):
     load_idioms()
     feedback, status, round_num, answer, pinyin, error = submit_guess(
         game_id, req.guess)
@@ -48,7 +48,7 @@ def api_submit_guess(game_id: str, req: GuessRequest):
 
 
 @router.post("/games/{game_id}/hints", response_model=HintResponse)
-def api_use_hint(game_id: str):
+def api_use_hint(game_id: str, response: Response):
     load_idioms()
     pinyins, error = use_hint(game_id)
     if error:
@@ -63,7 +63,7 @@ def api_use_hint(game_id: str):
 
 
 @router.get("/games/{game_id}", response_model=GameStateResponse)
-def api_get_game(game_id: str):
+def api_get_game(game_id: str, response: Response):
     load_idioms()
     game = get_game(game_id)
 
