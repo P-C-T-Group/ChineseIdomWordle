@@ -49,7 +49,7 @@ def api_submit_guess(game_id: str, req: GuessRequest, response: Response):
         result=feedback,
         round=round_num,
         max_rounds=game.max_rounds,
-        status=status,
+        game_status=status,
         answer=answer,
         pinyin=pinyin
     )

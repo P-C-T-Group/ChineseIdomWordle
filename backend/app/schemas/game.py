@@ -40,11 +40,11 @@ class GuessResponse(BaseModel):
     code: int = 200
     status: str = "success"
     game_id: str
+    game_status: str
     guess: str
     result: list[CharFeedback]
     round: int
     max_rounds: int
-    status: str
     answer: Optional[str] = None
     pinyin: Optional[str] = None
 
