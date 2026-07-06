@@ -33,7 +33,7 @@ def load_valid_token_hashes() -> None:
     valid_token_hashes.clear()
     # 判断文件是否存在
     if not TOKEN_FILE_PATH.exists():
-        raise RuntimeError(f"Token摘要文件（{TOKEN_FILE_PATH}）不存在，如需关闭Token鉴权，请创建空文件。")
+        raise RuntimeError(f"ERROR:     Token摘要文件（{TOKEN_FILE_PATH}）不存在，如需关闭Token鉴权，请创建空文件。")
     with open(TOKEN_FILE_PATH, "r", encoding="utf-8") as f:
         for line in f:
             line = line.strip()
@@ -42,10 +42,10 @@ def load_valid_token_hashes() -> None:
     # 新增逻辑：空集合代表空文件，关闭鉴权
     if len(valid_token_hashes) == 0:
         enable_auth = False
-        print("[Auth] Token摘要列表无有效Token，已自动关闭全局Token校验")
+        print("INFO:     [Auth] Token摘要列表无有效Token，已自动关闭全局Token校验")
     else:
         enable_auth = True
-        print(f"[Auth] 成功加载 {len(valid_token_hashes)} 条合法Token摘要")
+        print(f"INFO:     [Auth] 成功加载 {len(valid_token_hashes)} 条合法Token摘要")
 
 def get_token_sha256(raw_token: str) -> str:
     """
