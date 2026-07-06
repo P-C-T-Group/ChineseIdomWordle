@@ -2,7 +2,7 @@
 '''
 main.py 
 EnterGate of ChineseIdomWordle backend (FastAPI)
-(c) 2024 P.C.T.G. MIT License.
+(c) 2026 P.C.T.G. MIT License.
 CODEOWNERS: @GZYZhy
 '''
 
