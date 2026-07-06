@@ -1,3 +1,11 @@
+# -- coding: utf-8 --
+'''
+main.py 
+EnterGate of ChineseIdomWordle backend (FastAPI)
+(c) 2024 P.C.T.G. MIT License.
+CODEOWNERS: @GZYZhy
+'''
+
 from fastapi import FastAPI, Response, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
@@ -5,6 +13,45 @@ from fastapi.exceptions import RequestValidationError
 from app.services.routes import router
 from app.schemas.game import ErrorResponse
 from starlette.exceptions import HTTPException as StarletteHTTPException
+# [feat #3] AUTH
+import hashlib
+from pathlib import Path
+
+TOKEN_FILE_PATH = Path("./token-sha256.txt")
+ADMIN_TOKEN_HASH = "" # Admin Token Hash (SHA256) for /api/admin api endpoints
+
+# 缓存合法哈希列表
+valid_token_hashes: set[str] = set()
+enable_auth: bool = True
+
+def load_valid_token_hashes() -> None:
+    """
+    读取txt内所有sha256合法token摘要，存入全局集合缓存
+    文件存在但无有效内容时，自动关闭鉴权校验
+    """
+    global valid_token_hashes, enable_auth
+    valid_token_hashes.clear()
+    # 判断文件是否存在
+    if not TOKEN_FILE_PATH.exists():
+        raise RuntimeError(f"Token摘要文件（{TOKEN_FILE_PATH}）不存在，如需关闭Token鉴权，请创建空文件。")
+    with open(TOKEN_FILE_PATH, "r", encoding="utf-8") as f:
+        for line in f:
+            line = line.strip()
+            if line: # 跳过空行
+                valid_token_hashes.add(line)
+    # 新增逻辑：空集合代表空文件，关闭鉴权
+    if len(valid_token_hashes) == 0:
+        enable_auth = False
+        print("[Auth] Token摘要列表无有效Token，已自动关闭全局Token校验")
+    else:
+        enable_auth = True
+        print(f"[Auth] 成功加载 {len(valid_token_hashes)} 条合法Token摘要")
+
+def get_token_sha256(raw_token: str) -> str:
+    """
+    计算传入token的sha256摘要
+    """
+    return hashlib.sha256(raw_token.encode("utf-8")).hexdigest()
 
 class UTF8JSONResponse(JSONResponse):
     """
@@ -19,6 +66,8 @@ class UTF8JSONResponse(JSONResponse):
         self.headers["X-Server"] = "P-C-T-G-Wordle-API/1.0"
         self.headers["Server"] = "P-C-T-G-Wordle-API/1.0"
 
+# 启动前加载合法token哈希
+load_valid_token_hashes()
 
 app = FastAPI(title="IdomWordle API", default_response_class=UTF8JSONResponse)
 
@@ -32,6 +81,42 @@ app.add_middleware(
 
 app.include_router(router)
 
+@app.middleware("http")
+async def bearer_auth_middleware(request: Request, call_next):
+    """
+    全局中间件 - Bearer Token 鉴权
+    """
+    current_path = request.url.path
+    # 根路径（健康检查）、重载token端点、（可能的）文档端点免Token
+    if current_path in ("/", "/api/admin/reload-token", "/docs", "/redoc", "/openapi.json"):
+        return await call_next(request)
+    
+    # Token Auth关闭则直接放行
+    if not enable_auth:
+        return await call_next(request)
+    
+    # 其他路径先校验Token，校验失败直接拦截
+    auth_header = request.headers.get("Authorization")
+    if not auth_header or not auth_header.startswith("Bearer "):
+        err = ErrorResponse(code=401, status="fail", message="缺少Bearer Token请求头")
+        return JSONResponse(status_code=401, content=err.model_dump())
+    
+    # Token分割
+    raw_part = auth_header.split(" ", 1)
+    if len(raw_part) != 2 or not raw_part[1].strip():
+        err = ErrorResponse(code=401, status="fail", message="Bearer Token格式错误")
+        return JSONResponse(status_code=401, content=err.model_dump())
+    raw_token = raw_part[1].strip()
+
+    token_hash = get_token_sha256(raw_token)
+    if token_hash not in valid_token_hashes:
+        err = ErrorResponse(code=401, status="fail", message="Token无效")
+        return JSONResponse(status_code=401, content=err.model_dump())
+
+    # Token合法则放行
+    response = await call_next(request)
+    return response
+
 @app.get("/")
 def read_root(response: Response):
     """
@@ -44,6 +129,23 @@ def read_root(response: Response):
     }
     response.headers["X-Server-Health"] = "OK"
     return result
+
+@app.get("/api/admin/reload-token")
+def reload_token_list(request: Request):
+    """
+    管理员接口 - 重载token列表
+    """
+    auth_header = request.headers.get("Authorization", "")
+    if auth_header.startswith("Bearer "):
+        parts = auth_header.split(" ", 1)
+        if len(parts) != 2 or not parts[1].strip():
+            return JSONResponse(status_code=403, content=ErrorResponse(code=403,status="fail",message="管理员Token格式错误").model_dump())
+        admin_token = parts[1].strip()
+        if get_token_sha256(admin_token) == ADMIN_TOKEN_HASH:
+            load_valid_token_hashes()
+            return {"code":200,"message":"重载成功","total_valid":len(valid_token_hashes)}
+    # 无管理员权限
+    return JSONResponse(status_code=403, content=ErrorResponse(code=403,status="fail",message="无管理员操作权限").model_dump())
 
 @app.exception_handler(StarletteHTTPException)
 async def starlette_http_exception_handler(request: Request, exc: StarletteHTTPException):
