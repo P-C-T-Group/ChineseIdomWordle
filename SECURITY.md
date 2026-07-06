@@ -8,7 +8,7 @@ We believe our code should let people happy, so we are happy to improve our code
 
 If you believe you have found a security issue: 
 
-- **DO NOT** juso open an issue directly.
+- **DO NOT** just open an issue directly.
 - Instead, email to `pctgroup@163.com`.
 
 We will handle it as soon as possible.
