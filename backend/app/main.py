@@ -4,6 +4,7 @@ from fastapi.responses import JSONResponse
 from fastapi.exceptions import RequestValidationError 
 from app.services.routes import router
 from app.schemas.game import ErrorResponse
+from starlette.exceptions import HTTPException as StarletteHTTPException
 
 class UTF8JSONResponse(JSONResponse):
     """
@@ -44,6 +45,21 @@ def read_root(response: Response):
     response.headers["X-Server-Health"] = "OK"
     return result
 
+@app.exception_handler(StarletteHTTPException)
+async def starlette_http_exception_handler(request: Request, exc: StarletteHTTPException):
+    """
+    自定义标准http错误采用的格式化 Starlette HTTP 异常处理器
+    """
+    err = ErrorResponse(
+        code=exc.status_code,
+        status="fail",
+        message=exc.detail
+    )
+    return JSONResponse(
+        status_code=exc.status_code,
+        content=err.model_dump()
+    )
+
 @app.exception_handler(HTTPException)
 async def custom_http_exception_handler(request: Request, exc: HTTPException):
     """
@@ -73,3 +89,15 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
         message=msg
     )
     return JSONResponse(status_code=422, content=err.model_dump())
+
+@app.exception_handler(Exception)
+async def global_unknown_exception_handler(request: Request, exc: Exception):
+    '''
+    兜底异常处理器，捕获所有未处理的异常
+    '''
+    err = ErrorResponse(
+        code=500,
+        status="fail",
+        message="服务器内部异常，请稍后重试"
+    )
+    return JSONResponse(status_code=500, content=err.model_dump())
