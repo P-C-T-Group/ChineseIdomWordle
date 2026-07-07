@@ -159,7 +159,7 @@ def reload_token_list(request: Request):
         admin_token = parts[1].strip()
         if get_token_sha256(admin_token) == ADMIN_TOKEN_HASH:
             load_valid_token_hashes()
-            return {"code": 200, "message": "重载成功", "total_valid": len(valid_token_hashes)}
+            return {"code": 200, "status": "success", "message": "重载成功", "total_valid": len(valid_token_hashes)}
     # 无管理员权限
     return JSONResponse(status_code=403, content=ErrorResponse(code=403, status="fail", message="无管理员操作权限").model_dump())
 
