@@ -91,6 +91,8 @@ async def add_global_server_headers(request: Request, call_next):
     response = await call_next(request)
     response.headers["X-Server"] = "P-C-T-G-Wordle-API/1.0"
     response.headers["Server"] = "P-C-T-G-Wordle-API/1.0"
+    response.headers["Access-Control-Allow-Origin"] = "*"
+    response.headers["Access-Control-Allow-Methods"] = "POST, GET, OPTIONS"
     return response
 
 
