@@ -71,14 +71,6 @@ load_valid_token_hashes()
 
 app = FastAPI(title="IdomWordle API")
 
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
-
 app.include_router(router)
 
 
@@ -91,9 +83,6 @@ async def add_global_server_headers(request: Request, call_next):
     response = await call_next(request)
     response.headers["X-Server"] = "P-C-T-G-Wordle-API/1.0"
     response.headers["Server"] = "P-C-T-G-Wordle-API/1.0"
-    response.headers["Access-Control-Allow-Origin"] = "*"
-    response.headers["Access-Control-Allow-Methods"] = "POST, GET, OPTIONS"
-    response.headers["Access-Control-Allow-Headers"] = "Content-Type,Accept,Token,Authorization"
     return response
 
 
@@ -105,6 +94,10 @@ async def bearer_auth_middleware(request: Request, call_next):
     current_path = request.url.path
     # 根路径（健康检查）、重载token端点、（可能的）文档端点免Token
     if current_path in ("/", "/api/admin/reload-token", "/docs", "/redoc", "/openapi.json"):
+        return await call_next(request)
+
+    # 放行所有 OPTIONS 跨域预检请求
+    if request.method == "OPTIONS":
         return await call_next(request)
 
     # Token Auth关闭则直接放行
@@ -133,6 +126,27 @@ async def bearer_auth_middleware(request: Request, call_next):
     # Token合法则放行
     response = await call_next(request)
     return response
+
+# 跨域中间件
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=[
+        "GET",
+        "POST",
+        "PUT",
+        "OPTIONS"
+    ],
+    allow_headers=[
+        "Authorization",
+        "Content-Type",
+        "Accept",
+        "Origin",
+        "Keep-Alive",
+        "User-Agent"
+    ],
+)
 
 
 @app.get("/")
