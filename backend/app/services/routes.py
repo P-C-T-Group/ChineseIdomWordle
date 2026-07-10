@@ -12,7 +12,8 @@ from app.services.game_service import (
     submit_guess,
     get_game,
     use_hint,
-    load_idioms
+    load_idioms,
+    ensure_game
 )
 
 
@@ -20,6 +21,7 @@ router = APIRouter(prefix="/api")
 
 
 @router.post("/games", response_model=CreateGameResponse)
+# 创建新游戏
 def api_create_game(req: CreateGameRequest, response: Response):
     game = create_game(req.mode, req.difficulty)
     return CreateGameResponse(
@@ -34,6 +36,7 @@ def api_create_game(req: CreateGameRequest, response: Response):
 
 
 @router.post("/games/{game_id}/guesses", response_model=GuessResponse)
+# 提交猜测
 def api_submit_guess(game_id: str, req: GuessRequest, response: Response):
     load_idioms()
     feedback, status, round_num, answer, pinyin, error = submit_guess(
@@ -56,6 +59,7 @@ def api_submit_guess(game_id: str, req: GuessRequest, response: Response):
 
 
 @router.post("/games/{game_id}/hints", response_model=HintResponse)
+# 使用提示
 def api_use_hint(game_id: str, response: Response):
     load_idioms()
     pinyins, error = use_hint(game_id)
@@ -71,8 +75,13 @@ def api_use_hint(game_id: str, response: Response):
 
 
 @router.get("/games/{game_id}", response_model=GameStateResponse)
+# 获取游戏状态
 def api_get_game(game_id: str, response: Response):
     load_idioms()
+
+    if not ensure_game(game_id):
+        raise HTTPException(status_code=400, detail="游戏不存在")
+
     game = get_game(game_id)
 
     answer = None
@@ -93,6 +102,38 @@ def api_get_game(game_id: str, response: Response):
         round=game.round,
         answer=answer,
         pinyin=pinyin,
+        hints_used=game.hints_used,
+        max_hints=game.max_hints,
+        revealed_pinyins=game.revealed_pinyins
+    )
+
+
+@router.get("/games/{game_id}/reveal", response_model=GameStateResponse)
+# 强制揭示答案
+def api_game_reveal(game_id: str, response: Response):
+    load_idioms()
+
+    if not ensure_game(game_id):
+        raise HTTPException(status_code=400, detail="游戏不存在")
+
+    game = get_game(game_id)
+
+    if game.game_status != "playing":
+        raise HTTPException(status_code=400, detail="本局游戏已结束,状态不为playing")
+
+    game.game_status = "lost"  # 判负
+
+    return GameStateResponse(
+        game_id=game.game_id,
+        mode=game.mode,
+        difficulty=game.difficulty,
+        max_rounds=game.max_rounds,
+        candidate_chars=game.candidate_chars,
+        game_status=game.game_status,
+        guesses=game.guesses,
+        round=game.round,
+        answer=game.target_idiom,
+        pinyin=game.target_pinyin,
         hints_used=game.hints_used,
         max_hints=game.max_hints,
         revealed_pinyins=game.revealed_pinyins
