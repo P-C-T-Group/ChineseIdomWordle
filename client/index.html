@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="Access-Control-Allow-Origin" content="*">
+    <link rel="stylesheet" type="text/css" href="css/indexStyle.css">
+    <script src="js/indexScript.js"></script>
+    <title>成语Wordle</title>
+</head>
+<body>
+    <!--导航栏-->
+    <div class="MenuBar">
+        <div class="leftMenu">
+            <button class="button" onclick="start()">
+                <img src="css/svg/主页.svg" class="icon" alt="主页">
+            </button>
+        </div>
+        <div class="title">成语Wordle</div>
+        <div class="rightMenu">
+            <button class="button" onclick="help()">
+                <img src="css/svg/帮助.svg" class="icon" alt="帮助">
+            </button>
+            <button class="button" onclick="rank()">
+                <img src="css/svg/排行榜.svg" class="icon" alt="排行榜">
+            </button>
+        </div>
+    </div>
+    <!--开始游戏-->
+    <div class="startGame">
+        <div class="text">
+            <label for="mode">选择模式</label>
+        </div>
+        <div class="sl">
+            <select id="mode" name="mode">
+                <option value="daily">日常挑战</option>
+                <option value="unlimited" selected>无限模式</option>
+            </select>
+        </div>
+        <div class="text">
+            <label for="difficulty">选择难度</label>
+        </div>
+        <div class="sl">
+            <select id="difficulty" name="difficulty">
+                <option value="easy">简单</option>
+                <option value="medium" selected>媒介</option>
+                <option value="hard">硬</option>
+            </select>
+        </div>
+        <div class="button">
+            <button onclick="startGame()" class="button">はじまるよ！</button>
+        </div>
+        
+    </div>
+</body>

@@ -1,0 +1,109 @@
+@font-face {
+    font-family: "85W";
+    src: url("fonts/85W.ttf");
+}
+
+@font-face {
+    font-family: "75W";
+    src: url("fonts/75W.ttf");
+}
+
+@font-face {
+    font-family: "65W";
+    src: url("fonts/65W.ttf");
+}
+
+@font-face {
+    font-family: "55W";
+    src: url("fonts/55W.ttf");
+}
+
+@font-face {
+    font-family: "45W";
+    src: url("fonts/45W.ttf");
+}
+
+@font-face {
+    font-family: "35W";
+    src: url("fonts/35W.ttf");
+}
+
+.MenuBar
+{
+    margin: auto;
+    width: 90%;
+    max-width: 700px;
+    border-bottom: 2px solid darkgray;
+    display: grid;
+    grid-template-columns: 1fr 3fr 1fr;
+    justify-items: center;
+    align-items: center;
+    letter-spacing: 0.2em;
+    z-index: 1;
+}
+
+.MenuBar .icon
+{
+    height: 2.5em;
+}
+
+.MenuBar .button
+{
+    background-color: transparent;
+    border-width: 0;
+    cursor: pointer;
+    padding: 0.5rem;
+}
+
+
+.MenuBar .title
+{
+    text-align: center;
+    font-size: 2.5em;
+    font-family: "85W", sans-serif;
+    
+}
+
+.MenuBar .leftMenu
+{
+    justify-self: start;
+}
+
+.MenuBar .rightMenu
+{
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 30%;
+}
+
+.startGame
+{
+    margin: auto;
+    width: 90%;
+    max-width: 700px;
+    margin-top: 2em;
+    display: grid;
+    grid-template-columns: 1fr 3fr 1fr;
+    grid-template-columns: 1fr 3fr 1fr;
+    justify-items: start;
+    align-items: center;
+}
+
+.startGame .text
+{
+    text-align: center;
+    font-size: 2em;
+    font-family: "85W", sans-serif;
+    grid-column: 1 / 2;
+
+}
+
+.startGame .sl
+{
+    grid-column: 2 / 3;
+}
+
+.startGame .button
+{
+    grid-column: 2 / 3;
+}
