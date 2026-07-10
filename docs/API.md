@@ -1,5 +1,9 @@
 # API 设计
 
+## Tips
+
+本文档已弃用，最新版文档，请见[wordleAPI - https://doc.wordle.whj.zdeweb.cn](https://doc.wordle.whj.zdeweb.cn)
+
 ## 通用
 
 - 基础路径: `/api`
@@ -120,10 +124,8 @@ POST /api/games/{game_id}/guesses
 ### 使用提示
 
 ```http
-POST /api/games/{game_id}/hints
+GET /api/games/{game_id}/hints
 ```
-
-无请求体。
 
 响应：
 
@@ -139,6 +141,14 @@ POST /api/games/{game_id}/hints
 ```
 
 > 随机揭示一个未提示过的目标成语字的拼音。每局最多 2 次提示。
+
+### 揭晓答案
+
+```http
+GET /api/games/{game_id}/reveal
+```
+
+详见最新版文档
 
 ### 查询游戏状态
 
