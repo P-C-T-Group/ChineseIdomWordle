@@ -174,7 +174,16 @@ def use_hint(game_id: str) -> tuple[list[str], str | None]:
 
 
 def get_game(game_id: str) -> Game:
+    # 获取游戏状态
     game_get_id: Game | None = games.get(game_id)
     if game_get_id is None:
         game_get_id = NONEGAME
     return game_get_id
+
+
+def ensure_game(game_id: str) -> bool:
+    # 确保游戏存在的小工具
+    if game_id not in games:
+        return False
+    else:
+        return True
