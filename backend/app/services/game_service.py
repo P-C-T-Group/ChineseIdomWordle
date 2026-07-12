@@ -25,7 +25,11 @@ POOL_SIZE = {
 
 # 内存存储（数据库待定）
 games: dict[str, Game] = {}
-idiom_list: list[Idiom] = []
+# idiom_list: list[Idiom] = []
+easy_idiom_list: list[Idiom] = []
+medium_idiom_list: list[Idiom] = []
+hard_idiom_list: list[Idiom] = []
+difficulty_dict: dict[str, list[Idiom]]
 
 # 空游戏
 
@@ -45,30 +49,45 @@ NONEGAME = Game(
 
 def load_idioms():
     # 从 JSON 文件加载成语数据，过滤四字成语
-    global idiom_list
-    if idiom_list:
+    # global idiom_list
+    global easy_idiom_list, medium_idiom_list, hard_idiom_list
+    if easy_idiom_list and medium_idiom_list and hard_idiom_list:
         return
 
-    data_path = os.path.join(os.path.dirname(
-        __file__), "..", "..", "..", "data", "idiom.json")
-    with open(data_path, "r", encoding="utf-8") as f:
+    easy_data_path = os.path.join(os.path.dirname(
+        __file__), "..", "..", "..", "data", "easy.json")
+    with open(easy_data_path, "r", encoding="utf-8") as f:
         raw = json.load(f)
-    idiom_list = [Idiom(**item)
-                  for item in raw if len(item.get("word", "")) == 4]
+    easy_idiom_list = [Idiom(**item)
+                       for item in raw if len(item.get("word", "")) == 4]
+
+    medium_data_path = os.path.join(os.path.dirname(
+        __file__), "..", "..", "..", "data", "medium.json")
+    with open(medium_data_path, "r", encoding="utf-8") as f:
+        raw = json.load(f)
+    medium_idiom_list = [Idiom(**item)
+                         for item in raw if len(item.get("word", "")) == 4]
+
+    hard_data_path = os.path.join(os.path.dirname(
+        __file__), "..", "..", "..", "data", "hard.json")
+    with open(hard_data_path, "r", encoding="utf-8") as f:
+        raw = json.load(f)
+    hard_idiom_list = [Idiom(**item)
+                       for item in raw if len(item.get("word", "")) == 4]
 
 
-def get_daily_idiom() -> Idiom:
+def get_daily_idiom(difficulty: Difficulty) -> Idiom:
     # 根据日期生成每日挑战成语
     load_idioms()
     today = date.today()
     rng = Random(today.toordinal())
-    return rng.choice(idiom_list)
+    return rng.choice(difficulty_dict[difficulty.value])
 
 
-def get_random_idiom() -> Idiom:
+def get_random_idiom(difficulty) -> Idiom:
     # 随机成语（无限模式）
     load_idioms()
-    return random.choice(idiom_list)
+    return random.choice(difficulty_dict[difficulty.value])
 
 
 def create_game(mode: GameMode, difficulty: Difficulty) -> Game:
@@ -76,11 +95,11 @@ def create_game(mode: GameMode, difficulty: Difficulty) -> Game:
     load_idioms()
 
     if mode == GameMode.daily:
-        target = get_daily_idiom()
+        target = get_daily_idiom(difficulty)
     else:
-        target = get_random_idiom()
+        target = get_random_idiom(difficulty)
 
-    all_words = [item.word for item in idiom_list]
+    all_words = [item.word for item in difficulty_dict[difficulty.value]]
     candidates = generate_candidates(
         target.word, POOL_SIZE[difficulty], difficulty.value, all_words)
 
