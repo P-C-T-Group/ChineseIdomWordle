@@ -50,7 +50,7 @@ NONEGAME = Game(
 def load_idioms():
     # 从 JSON 文件加载成语数据，过滤四字成语
     # global idiom_list
-    global easy_idiom_list, medium_idiom_list, hard_idiom_list
+    global easy_idiom_list, medium_idiom_list, hard_idiom_list, difficulty_dict
     if easy_idiom_list and medium_idiom_list and hard_idiom_list:
         return
 
@@ -75,8 +75,15 @@ def load_idioms():
     hard_idiom_list = [Idiom(**item)
                        for item in raw if len(item.get("word", "")) == 4]
 
+    difficulty_dict = {
+        'easy': easy_idiom_list,
+        'medium': medium_idiom_list,
+        'hard': hard_idiom_list
+    }
+
 
 def get_daily_idiom(difficulty: Difficulty) -> Idiom:
+    global difficulty_dict
     # 根据日期生成每日挑战成语
     load_idioms()
     today = date.today()
@@ -85,6 +92,7 @@ def get_daily_idiom(difficulty: Difficulty) -> Idiom:
 
 
 def get_random_idiom(difficulty) -> Idiom:
+    global difficulty_dict
     # 随机成语（无限模式）
     load_idioms()
     return random.choice(difficulty_dict[difficulty.value])
@@ -98,7 +106,6 @@ def create_game(mode: GameMode, difficulty: Difficulty) -> Game:
         target = get_daily_idiom(difficulty)
     else:
         target = get_random_idiom(difficulty)
-
     all_words = [item.word for item in difficulty_dict[difficulty.value]]
     candidates = generate_candidates(
         target.word, POOL_SIZE[difficulty], difficulty.value, all_words)
