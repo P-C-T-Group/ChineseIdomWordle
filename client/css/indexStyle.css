@@ -28,11 +28,18 @@
     src: url("fonts/35W.ttf");
 }
 
+body
+{
+    -webkit-user-select: none; /* Safari 和 Chrome */
+    -moz-user-select: none;    /* Firefox */
+    -ms-user-select: none;     /* IE/Edge 旧版 */
+    user-select: none;         /* 标准语法 */
+}
+
 .MenuBar
 {
     margin: auto;
     width: 90%;
-    max-width: 700px;
     border-bottom: 2px solid darkgray;
     display: grid;
     grid-template-columns: 1fr 3fr 1fr;
@@ -61,7 +68,6 @@
     text-align: center;
     font-size: 2.5em;
     font-family: "85W", sans-serif;
-    
 }
 
 .MenuBar .leftMenu
@@ -84,7 +90,6 @@
     margin-top: 2em;
     display: grid;
     grid-template-columns: 1fr 3fr 1fr;
-    grid-template-columns: 1fr 3fr 1fr;
     justify-items: start;
     align-items: center;
 }
@@ -100,10 +105,120 @@
 
 .startGame .sl
 {
+    text-align: center;
+    font-size: 1.5em;
+    font-family: "65W", sans-serif;
     grid-column: 2 / 3;
 }
+
 
 .startGame .button
 {
     grid-column: 2 / 3;
+}
+
+.mainGame
+{
+    width: 90%;
+    margin: auto;
+    display: flex;
+    flex-direction: row-reverse;
+}
+
+.mainGame .box
+{
+    margin: auto;
+    display: flex;
+    margin-top: 2em;
+    gap: 1em;
+    flex-direction: column;
+}
+
+.mainGame .box .boxes
+{
+    width: 1.5em;
+    height: 1.5em;
+    background-color: transparent;
+    border: 1px solid gray;
+    border-radius: 8px;
+    cursor: pointer;
+    text-align: center;
+    font-size: 3rem;
+    font-family: "85W", sans-serif;
+    line-height: 1.5em;
+}
+
+.guess
+{
+    margin: auto;
+    display: flex;
+    justify-content: center;
+    gap: 10em;
+    margin-top: 3em;
+    cursor: pointer;
+    padding: 0.5rem;
+}
+
+.guess label
+{
+    cursor: pointer;
+    text-align: center;
+    font-size: 3em;
+    font-family: "65W", sans-serif;
+}
+
+.guess .icon
+{
+    height: 2.5em;
+}
+
+.guess .button
+{
+    background-color: transparent;
+    border-width: 0;
+    cursor: pointer;
+    padding: 0.5rem;
+}
+
+
+.candidate
+{
+    position: relative;
+    margin-top: 3em;
+    left: 5%;
+    width: 90%;
+    display: grid;
+    grid-template-rows: 1fr 1fr;
+    gap: 2.5em;
+    cursor: pointer;
+}
+
+.candidate .line
+{
+    display: flex;
+    justify-content: center;
+    gap: 3em;
+}
+
+.candidate .line .word
+{
+    width: 1.5em;
+    height: 1.5em;
+    line-height: 1.5em;
+    text-align: center;
+    font-size: 4em;
+    font-family: "85W", sans-serif;
+    border: 1px solid gray;
+    border-radius: 8px;
+    background-color: lightgray;
+}
+
+.msg
+{
+    display: flex;
+    justify-content: center;
+    margin-top: 1em;
+    text-align: center;
+    font-size: 3em;
+    font-family: "65W", sans-serif;
 }

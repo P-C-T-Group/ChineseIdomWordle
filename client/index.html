@@ -3,6 +3,7 @@
     <meta charset="utf-8">
     <meta http-equiv="Access-Control-Allow-Origin" content="*">
     <link rel="stylesheet" type="text/css" href="css/indexStyle.css">
+    <link rel="icon" href="icons/256.ico" sizes="256x256">
     <script src="js/indexScript.js"></script>
     <title>成语Wordle</title>
 </head>
@@ -25,29 +26,60 @@
         </div>
     </div>
     <!--开始游戏-->
-    <div class="startGame">
+    <div class="startGame" id="startGame" >
         <div class="text">
             <label for="mode">选择模式</label>
         </div>
         <div class="sl">
-            <select id="mode" name="mode">
-                <option value="daily">日常挑战</option>
-                <option value="unlimited" selected>无限模式</option>
-            </select>
+            <label>
+                <input id="mode" type="radio" name="mode" value="daily">日常挑战
+            </label>
+            <label>
+                <input id="mode" type="radio" name="mode" value="unlimited" checked>无限模式
+            </label>
         </div>
         <div class="text">
             <label for="difficulty">选择难度</label>
         </div>
         <div class="sl">
-            <select id="difficulty" name="difficulty">
-                <option value="easy">简单</option>
-                <option value="medium" selected>媒介</option>
-                <option value="hard">硬</option>
-            </select>
+            <label>
+                <input id="difficulty" type="radio" name="difficulty" value="easy">简单
+            </label>
+            <label>
+                <input id="difficulty" type="radio" name="difficulty" value="medium" checked>媒介
+            </label>
+            <label>
+                <input id="difficulty" type="radio" name="difficulty" value="hard">硬
+            </label>
         </div>
         <div class="button">
             <button onclick="startGame()" class="button">はじまるよ！</button>
         </div>
-        
     </div>
+    <!--游戏界面-->
+    <div class="mainGame" id="mainGame">
+
+    </div>
+    <!--游戏控制-->
+    <div class="guess" id="guess" style="display: none">
+        <div class="hint">
+            <button class="button" id="hint" onclick="help()">
+                    <img src="css/svg/提示.svg" class="icon" alt="帮助">
+            </button>
+        <label for="hint">获取提示</label>
+        </div>
+        <div class="upload">
+            <button class="button" id="upload" onclick="guess()">
+                <img src="css/svg/上传.svg" class="icon" alt="帮助">
+            </button>
+            <label for="upload">提交猜测</label>
+        </div>
+    </div>
+    <!--候选列表-->
+    <div class="candidate">
+        <div class="line" id="line1"></div>
+        <div class="line" id="line2"></div>
+    </div>
+    <!--通知-->
+    <div class="msg" id="msg"></div>
 </body>
