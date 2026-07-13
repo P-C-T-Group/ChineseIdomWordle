@@ -9,11 +9,11 @@ function startGame()
 {
     mode = document.querySelector('input[name="mode"]:checked').value;
     difficulty = document.querySelector('input[name="difficulty"]:checked').value;
-    fetch('http://192.168.10.16:8000/api/games', {
+    fetch('https://wordle.whj.zdeweb.cn/api/games', {
         method: 'POST', 
         headers: {
             'Content-Type': 'application/json', 
-            'Authorization': 'Bearer test-token', 
+            'Authorization': 'Bearer 7sK9pR2tG5', 
         },
         body: JSON.stringify({
             'mode': mode, 
@@ -127,11 +127,11 @@ function guess() {
             continue;
         }
     }
-    fetch(`http://192.168.10.16:8000/api/games/${game_id}/guesses`, {
+    fetch(`https://wordle.whj.zdeweb.cn/api/games/${game_id}/guesses`, {
         method: 'POST', 
         headers: {
             'Content-Type': 'application/json', 
-            'Authorization': 'Bearer test-token', 
+            'Authorization': 'Bearer 7sK9pR2tG5', 
         },
         body: JSON.stringify({
             'guess': candidate[0] + candidate[1] + candidate[2] + candidate[3]
@@ -141,7 +141,7 @@ function guess() {
     .then(data => {
         var status = data['game_status'];
         if (status == 'won') {
-            won(data['answer', 'pinyin']);
+            won(data['answer'], data['pinyin']);
         } else {
             playing(data['result']);
         }
