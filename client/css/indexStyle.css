@@ -4,28 +4,8 @@
 }
 
 @font-face {
-    font-family: "75W";
-    src: url("fonts/75W.ttf");
-}
-
-@font-face {
     font-family: "65W";
     src: url("fonts/65W.ttf");
-}
-
-@font-face {
-    font-family: "55W";
-    src: url("fonts/55W.ttf");
-}
-
-@font-face {
-    font-family: "45W";
-    src: url("fonts/45W.ttf");
-}
-
-@font-face {
-    font-family: "35W";
-    src: url("fonts/35W.ttf");
 }
 
 body
@@ -144,7 +124,8 @@ body
     cursor: pointer;
     text-align: center;
     font-size: 3rem;
-    font-family: "85W", sans-serif;
+    font-family: "宋体", sans-serif;
+    font-weight: bold;
     line-height: 1.5em;
 }
 
@@ -207,10 +188,11 @@ body
     line-height: 1.5em;
     text-align: center;
     font-size: 4em;
-    font-family: "85W", sans-serif;
+    font-family: "宋体", sans-serif;
     border: 1px solid black;
     border-radius: 8px;
     background-color: lightgray;
+    font-weight: bold
 }
 
 .msg
@@ -220,5 +202,6 @@ body
     margin-top: 1em;
     text-align: center;
     font-size: 3em;
-    font-family: "65W", sans-serif;
+    font-family: "宋体", sans-serif;
+    font-weight: bold
 }

@@ -63,14 +63,14 @@
     <!--游戏控制-->
     <div class="guess" id="guess" style="display: none">
         <div class="hint">
-            <button class="button" id="hint" onclick="help()">
-                    <img src="css/svg/提示.svg" class="icon" alt="帮助">
+            <button class="button" id="hint" onclick="hint()">
+                <img src="css/svg/提示.svg" class="icon" alt="提示">
             </button>
-        <label for="hint">获取提示</label>
+        <label for="hint" id="hints">获取提示</label>
         </div>
         <div class="upload">
             <button class="button" id="upload" onclick="guess()">
-                <img src="css/svg/上传.svg" class="icon" alt="帮助">
+                <img src="css/svg/上传.svg" class="icon" alt="提交">
             </button>
             <label for="upload">提交猜测</label>
         </div>

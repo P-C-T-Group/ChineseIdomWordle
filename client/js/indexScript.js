@@ -15,6 +15,11 @@ const colorDict = {
     'absent': 'gray'
 }
 
+window.addEventListener('beforeunload', function (event) {
+    event.preventDefault();
+    event.returnValue = '';
+});
+
 
 // 创建游戏
 function startGame()
@@ -22,7 +27,7 @@ function startGame()
     startMusic.play();
     mode = document.querySelector('input[name="mode"]:checked').value;
     difficulty = document.querySelector('input[name="difficulty"]:checked').value;
-    fetch('/api/games', {
+    fetch('http://192.168.10.16:8000/api/games', {
         method: 'POST', 
         headers: {
             'Content-Type': 'application/json', 
@@ -151,7 +156,7 @@ function guess() {
             guess += document.getElementById(`${turn}/${i}`).innerHTML;
         }
     }
-    fetch(`/${game_id}/guesses`, {
+    fetch(`http://192.168.10.16:8000/api/games/${game_id}/guesses`, {
         method: 'POST', 
         headers: {
             'Content-Type': 'application/json', 
@@ -187,13 +192,40 @@ function won(ans, py) {
 }
 
 function playing(result) {
+    console.info(result)
     for (var i = 0; i <= 3; i ++) {
-        var index = candidate_chars.indexOf(result[i]['char'])
-        document.getElementById('c' + index).style.backgroundColor = colorDict[result[i]['status']]
-        document.getElementById(turn + '/' + candidate['c' + index]).style.backgroundColor = colorDict[result[i]['status']]
+        document.getElementById(reverseCandidate[i]).style.backgroundColor = colorDict[result[i]['status']]
+        document.getElementById(turn + '/' + i).style.backgroundColor = colorDict[result[i]['status']]
     }
     word = [true, true, true, true];
     candidate = {};
     reverseCandidate = {};
     turn += 1;
+}
+
+function hint() {
+    var msgDiv = document.getElementById('msg');
+    var hintLabel = document.getElementById('hints')
+    fetch(`http://192.168.10.16:8000/api/games/${game_id}/hints`, {
+        method: 'POST', 
+        headers: {
+            'Content-Type': 'application/json', 
+            'Authorization': 'Bearer 7sK9pR2tG5', 
+        },
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data['message'] == '提示次数已用完') {
+            msgDiv.innerHTML = '提示次数用完了喵'
+        } else {
+            if (data['hints_used'] == 1) {
+                hintLabel.innerHTML = data['revealed_pinyins'][0]
+                msgDiv.innerHTML = '还有一次提示机会喵'
+            } else {
+                hintLabel.innerHTML = data['revealed_pinyins'][0] + '   ' + data['revealed_pinyins'][1]
+                msgDiv.innerHTML = '提示机会没有了喵'
+            }
+        }
+    })
+    .catch(error => console.error('Error:', error));
 }

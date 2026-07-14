@@ -14,7 +14,7 @@ def evaluate_guess(guess: str, target: str) -> list[CharFeedback]:
         if c == target_chars[i]:  # 标记correct
             result[i]["status"] = "correct"
             target_chars[i] = ''
-        if c in target_chars:  # 标记present
+        elif c in target_chars:  # 标记present
             result[i]["status"] = "present"
             target_chars[target_chars.index(c)] = ''
 
