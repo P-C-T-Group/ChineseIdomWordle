@@ -1,7 +1,10 @@
-/data/idiom.json @mywddbks
+/data/* @mywddbks
 /docs/* @GZYZhy
 /README.md @GZYZhy
 /data/character.json @GZYZhy
 /backend/app/* @GZYZhy
 /backend/tests/* @GZYZhy
 /backend/requirements.txt @GZYZhy
+/client/index.html @mywddbks
+/client/js/indexScript.js @mywddbks
+/client/css/indexStyle.css @mywddbks

@@ -1,4 +1,4 @@
-var mode, difficulty, game_id, max_rounds, candidate_chars;
+var mode, difficulty, game_id, max_rounds, candidate_chars, gameStatus;
 var mainGameDiv, startGameDiv, candidateDivLine1, candidateDivLine2, guessDiv;
 
 var turn = 0;
@@ -9,17 +9,24 @@ var reverseCandidate = {};
 const endMusic = new Audio('结束.wav');
 const startMusic = new Audio('要开始了哟.wav')
 
+const colorDict = {
+    'correct': 'green', 
+    'present': 'yellow',
+    'absent': 'gray'
+}
+
+
 // 创建游戏
 function startGame()
 {
     startMusic.play();
     mode = document.querySelector('input[name="mode"]:checked').value;
     difficulty = document.querySelector('input[name="difficulty"]:checked').value;
-    fetch('https://wordle.whj.zdeweb.cn/api/games', {
+    fetch('/api/games', {
         method: 'POST', 
         headers: {
             'Content-Type': 'application/json', 
-            'Authorization': 'Bearer 7sK9pR2tG5', 
+            'Authorization': 'Bearer test-token', 
         },
         body: JSON.stringify({
             'mode': mode, 
@@ -83,7 +90,7 @@ function help() {
 }
 
 function rank() {
-    window.alert("你是第一")
+    window.alert("SQL不会写, 排行榜功能暂不可用喵")
 }
 
 
@@ -144,7 +151,7 @@ function guess() {
             guess += document.getElementById(`${turn}/${i}`).innerHTML;
         }
     }
-    fetch(`https://wordle.whj.zdeweb.cn/api/games/${game_id}/guesses`, {
+    fetch(`/${game_id}/guesses`, {
         method: 'POST', 
         headers: {
             'Content-Type': 'application/json', 
@@ -156,8 +163,8 @@ function guess() {
     })
     .then(response => response.json())
     .then(data => {
-        var status = data['game_status'];
-        if (status == 'won') {
+        gameStatus = data['game_status'];
+        if (gameStatus == 'won') {
             won(data['answer'], data['pinyin']);
         } else {
             playing(data['result']);
@@ -168,20 +175,20 @@ function guess() {
 
 function won(ans, py) {
     endMusic.play()
-    window.alert("你赢了喵, 要重启游戏了喵");
-}
-
-const colorDict = {
-    'correct': 'green', 
-    'present': 'yellow',
-    'absent': 'gray'
+    for (var i = 0; i <= 3; i ++) {
+        document.getElementById(turn + '/' + i).style.backgroundColor = colorDict['correct']
+    }
+    turn += 1;
+    document.getElementById('msg').innerHTML = turn + '回合猜出: ' + ans + '(' + py + ')';
+    var re = confirm(turn + '回合猜出: ' + ans + '(' + py + ')' + "了喵, 是否重启游戏喵");
+    if (re == true) {
+        location.reload()
+    }
 }
 
 function playing(result) {
-    console.info(result)
     for (var i = 0; i <= 3; i ++) {
         var index = candidate_chars.indexOf(result[i]['char'])
-        console.info(index)
         document.getElementById('c' + index).style.backgroundColor = colorDict[result[i]['status']]
         document.getElementById(turn + '/' + candidate['c' + index]).style.backgroundColor = colorDict[result[i]['status']]
     }
