@@ -16,6 +16,8 @@ from starlette.exceptions import HTTPException as StarletteHTTPException
 # [feat #3] AUTH
 import hashlib
 from pathlib import Path
+# 日志
+import logging
 
 RED = "\033[31m"
 GREEN = "\033[32m"
@@ -29,8 +31,12 @@ ADMIN_TOKEN_HASH = "db09d473d4b6461b91bfa47e4fed3ef55e0234df4132ca7a827b0a69e892
 valid_token_hashes: set[str] = set()
 enable_auth: bool = True
 
+# 加载日志记录器
+log = logging.getLogger('uvicorn')
+
 
 def load_valid_token_hashes() -> None:
+    global log
     """
     读取txt内所有sha256合法token摘要，存入全局集合缓存
     文件存在但无有效内容时，自动关闭鉴权校验
@@ -49,14 +55,10 @@ def load_valid_token_hashes() -> None:
                 valid_token_hashes.add(line)
     if len(valid_token_hashes) == 0:
         enable_auth = False
-        print(
-            f"{GREEN}INFO{RESET}:     [Auth] Token摘要列表无有效Token，已自动关闭全局Token校验"
-        )
+        log.info("[Auth] Token摘要列表无有效Token，已自动关闭全局Token校验")
     else:
         enable_auth = True
-        print(
-            f"{GREEN}INFO{RESET}:     [Auth] 成功加载 {len(valid_token_hashes)} 条合法Token摘要"
-        )
+        log.info(f"[Auth] 成功加载 {len(valid_token_hashes)} 条合法Token摘要")
 
 
 def get_token_sha256(raw_token: str) -> str:

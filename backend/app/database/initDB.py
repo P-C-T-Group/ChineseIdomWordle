@@ -1,5 +1,10 @@
 import pymysql
 from app.schemas.DB import DBConnection
+# 日志
+import logging
+
+# 加载日志记录器
+log = logging.getLogger('uvicorn')
 
 
 def initDB(DBConnection: DBConnection):
@@ -7,6 +12,8 @@ def initDB(DBConnection: DBConnection):
     RED = "\033[31m"
     GREEN = "\033[32m"
     RESET = "\033[0m"
+
+    global log
 
     # 连接到数据库
     conn = pymysql.connect(
@@ -31,11 +38,7 @@ def initDB(DBConnection: DBConnection):
         cursor.execute(sql_set_index_games_IP)
         cursor.execute(sql_set_index_games_difficulty)
         cursor.execute(sql_set_index_games_status)
-        print(
-            f"{GREEN}INFO{RESET}:     [DB] 数据库Games表初始化成功"
-        )
+        log.info("[DB] 数据库Games表初始化成功")
     except Exception as err:
         conn.rollback()
-        print(
-            f"{RED}ERROR{RESET}:     [DB] 数据库Games表初始化失败：", err
-        )
+        log.error(f"[DB] 数据库Games表初始化失败：{err}")
