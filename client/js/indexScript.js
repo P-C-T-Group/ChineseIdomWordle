@@ -3,10 +3,16 @@ var mainGameDiv, startGameDiv, candidateDivLine1, candidateDivLine2, guessDiv;
 
 var turn = 0;
 var word = [true, true, true, true];
-var candidate = [];
+var candidate = {};
+var reverseCandidate = {};
 
+const endMusic = new Audio('结束.wav');
+const startMusic = new Audio('要开始了哟.wav')
+
+// 创建游戏
 function startGame()
 {
+    startMusic.play();
     mode = document.querySelector('input[name="mode"]:checked').value;
     difficulty = document.querySelector('input[name="difficulty"]:checked').value;
     fetch('https://wordle.whj.zdeweb.cn/api/games', {
@@ -36,6 +42,7 @@ function startGame()
     .catch(error => console.error('Error:', error));
 }
 
+//生成待输入区
 function summonBox() {
     for (var i = 0; i < max_rounds; i++) {
         mainGameDiv.innerHTML += `
@@ -48,6 +55,7 @@ function summonBox() {
     }
 }
 
+//生成候选字
 function summonCandidate() {
     candidateDivLine1 = document.getElementById("line1");
     candidateDivLine2 = document.getElementById("line2");
@@ -62,6 +70,7 @@ function summonCandidate() {
     }
 }
 
+//菜单栏
 function start() {
     var re = confirm("是否回到首页")
     if (re == true) {
@@ -78,13 +87,13 @@ function rank() {
 }
 
 
-// client
-
+// 游戏逻辑
+// 加词
 function addWord(element) {
     var msgDiv = document.getElementById('msg');
-    msgDiv.innerHTML = '';
-    if (candidate.includes(element.innerHTML)) {
-        msgDiv.innerHTML = '这个字被玩坏了喵';
+    msgDiv.innerHTML = ''; // 清空输出栏
+    if (Object.keys(candidate).includes(element.id)) {
+        delWord(document.getElementById(`${turn}/${candidate[element.id]}`)) // 点击候选字删除
     } else {
         var full = true
         for (var i = 0; i <= 3; i++) {
@@ -92,9 +101,11 @@ function addWord(element) {
                 full = false;
                 var wordDiv = document.getElementById(turn + '/' + i)
                 wordDiv.innerHTML = element.innerHTML;
+                // word是个list 用于存储每一位字符是否输入 为true代表尚未输入
+                // candidate的key是候选字的id, value是输入区的位置
                 word[i] = false;
-                candidate.push(element.innerHTML);
-                element.style.backgroundColor = "orange";
+                candidate[element.id] = i;
+                reverseCandidate[i] = element.id;
                 break;
             } else {
                 continue;
@@ -106,25 +117,31 @@ function addWord(element) {
     }
 }
 
+// 点击输入区删除
 function delWord(element) {
-    var msgDiv = document.getElementById('msg');
-    msgDiv.innerHTML = '';
-    console.info(candidate_chars.indexOf(element.innerHTML))
-    var candidateDiv = document.getElementById('c' + candidate_chars.indexOf(element.innerHTML));
-    candidateDiv.style.backgroundColor = "lightgray";
-    candidate.pop(element.innerHTML);
-    element.innerHTML = '';
-    word[element.id[2]] = true;
+    if (element.id.split('/')[0] == turn) {
+        var msgDiv = document.getElementById('msg');
+        msgDiv.innerHTML = '';
+        var candidateDiv = document.getElementById('c' + candidate_chars.indexOf(element.innerHTML));
+        var candidateID = reverseCandidate[element.id.slice(-1)];
+        delete reverseCandidate[candidate[candidateID]];
+        delete candidate[candidateID];
+        element.innerHTML = '';
+        word[element.id[2]] = true;
+    } else {
+        return ;
+    }
 }
 
 function guess() {
     var msgDiv = document.getElementById('msg');
+    var guess = '';
     for (var i = 0; i <= 3; i++) {
         if (word[i]) {
             msgDiv.innerHTML = '我们只支持四字成语喵';
-            break;
+            return;
         } else {
-            continue;
+            guess += document.getElementById(`${turn}/${i}`).innerHTML;
         }
     }
     fetch(`https://wordle.whj.zdeweb.cn/api/games/${game_id}/guesses`, {
@@ -134,7 +151,7 @@ function guess() {
             'Authorization': 'Bearer 7sK9pR2tG5', 
         },
         body: JSON.stringify({
-            'guess': candidate[0] + candidate[1] + candidate[2] + candidate[3]
+            'guess': guess
         })
     })
     .then(response => response.json())
@@ -150,9 +167,26 @@ function guess() {
 }
 
 function won(ans, py) {
+    endMusic.play()
+    window.alert("你赢了喵, 要重启游戏了喵");
+}
 
+const colorDict = {
+    'correct': 'green', 
+    'present': 'yellow',
+    'absent': 'gray'
 }
 
 function playing(result) {
     console.info(result)
+    for (var i = 0; i <= 3; i ++) {
+        var index = candidate_chars.indexOf(result[i]['char'])
+        console.info(index)
+        document.getElementById('c' + index).style.backgroundColor = colorDict[result[i]['status']]
+        document.getElementById(turn + '/' + candidate['c' + index]).style.backgroundColor = colorDict[result[i]['status']]
+    }
+    word = [true, true, true, true];
+    candidate = {};
+    reverseCandidate = {};
+    turn += 1;
 }
