@@ -54,7 +54,8 @@ class HintResponse(BaseModel):
     code: int = 200
     status: str = "success"
     game_id: str
-    revealed_pinyins: list[str]
+    revealed_pinyins: list[str] = []
+    explanation: Optional[str] = None
     hints_used: int
     max_hints: int
 

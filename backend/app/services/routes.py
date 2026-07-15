@@ -39,7 +39,7 @@ def api_create_game(req: CreateGameRequest, response: Response):
 # 提交猜测
 def api_submit_guess(game_id: str, req: GuessRequest, response: Response):
     load_idioms()
-    feedback, status, round_num, answer, pinyin, error = submit_guess(
+    feedback, status, round_num, answer, pinyin, explanation, error = submit_guess(
         game_id, req.guess)
     if error:
         raise HTTPException(status_code=400, detail=error)
@@ -54,21 +54,23 @@ def api_submit_guess(game_id: str, req: GuessRequest, response: Response):
         max_rounds=game.max_rounds,
         game_status=status,
         answer=answer,
-        pinyin=pinyin
+        pinyin=pinyin,
+        explanation=explanation
     )
 
 
-@router.post("/games/{game_id}/hints", response_model=HintResponse)
+@router.get("/games/{game_id}/hints", response_model=HintResponse)
 # 使用提示
 def api_use_hint(game_id: str, response: Response):
     load_idioms()
-    pinyins, error = use_hint(game_id)
+    pinyins, explanation, error = use_hint(game_id)
     if error:
         raise HTTPException(status_code=400, detail=error)
     game = get_game(game_id)
     return HintResponse(
         game_id=game_id,
         revealed_pinyins=pinyins,
+        explanation=explanation,
         hints_used=game.hints_used,
         max_hints=game.max_hints
     )
@@ -86,10 +88,14 @@ def api_get_game(game_id: str, response: Response):
 
     answer = None
     pinyin = None
+    explanation = None
 
     if game.game_status != "playing":
         answer = game.target_idiom
         pinyin = game.target_pinyin
+        explanation = game.target_explanation
+    if game.hints_used >= 2:
+        explanation = game.target_explanation
 
     return GameStateResponse(
         game_id=game.game_id,
@@ -102,6 +108,7 @@ def api_get_game(game_id: str, response: Response):
         round=game.round,
         answer=answer,
         pinyin=pinyin,
+        explanation=explanation,
         hints_used=game.hints_used,
         max_hints=game.max_hints,
         revealed_pinyins=game.revealed_pinyins
@@ -136,5 +143,6 @@ def api_game_reveal(game_id: str, response: Response):
         pinyin=game.target_pinyin,
         hints_used=game.hints_used,
         max_hints=game.max_hints,
-        revealed_pinyins=game.revealed_pinyins
+        revealed_pinyins=game.revealed_pinyins,
+        explanation=game.target_explanation
     )
