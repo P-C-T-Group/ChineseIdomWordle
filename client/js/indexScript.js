@@ -258,10 +258,23 @@ function playing(result) {
         document.getElementById(reverseCandidate[i]).style.backgroundColor = colorDict[result[i]['status']]
         document.getElementById(turn + '/' + i).style.backgroundColor = colorDict[result[i]['status']]
     }
-    word = [true, true, true, true];
-    candidate = {};
-    reverseCandidate = {};
-    turn += 1;
+    if (turn < max_rounds - 1) {
+        word = [true, true, true, true];
+        candidate = {};
+        reverseCandidate = {};
+        turn += 1;
+    } else {
+        var re = confirm("没有猜出来喵, 是否重启游戏喵");
+        if (re == true) {
+            document.getElementById('msg').innerHTML = '';
+            document.getElementById("line1").innerHTML = '';
+            document.getElementById("line2").innerHTML = '';
+            document.getElementById('mainGame').innerHTML = '';
+            document.getElementById('guess').style.display='none';
+            document.getElementById('startGame').style.display='grid';
+        }
+        localStorage.removeItem("game_id");
+    }
 }
 
 function hint() {
