@@ -14,12 +14,17 @@
 ## 技术栈
 
 - **后端**: Python + FastAPI
-- **前端**: React + TypeScript？待定
+- **前端**: Javascript
 - **数据库**: SQLite（开发）/ PostgreSQL（生产）？是否需要数据库待定
 
 ## 文档
 
 见 [docs/](./docs) 目录。
+
+## TODO
+
+- 前端菜单栏
+- 数据持久化
 
 ## License
 
