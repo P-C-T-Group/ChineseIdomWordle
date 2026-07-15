@@ -18,7 +18,7 @@ function startGame()
     startMusic.play();
     mode = document.querySelector('input[name="mode"]:checked').value;
     difficulty = document.querySelector('input[name="difficulty"]:checked').value;
-    fetch('yourhost/api/games', {
+    fetch('//127.0.0.1:8000/api/games', {
         method: 'POST', 
         headers: {
             'Content-Type': 'application/json', 
@@ -59,7 +59,7 @@ function continueGame() {
     if (localStorage.getItem('game_id') == null) {
         msgDiv.innerHTML = '尚未找到上一局喵';
     } else {
-        fetch(`yourhost/api/games/${localStorage.getItem('game_id')}`, {
+        fetch(`//127.0.0.1:8000/api/games/${localStorage.getItem('game_id')}`, {
             method: 'GET', 
             headers: {
                 'Content-Type': 'application/json', 
@@ -212,7 +212,7 @@ function guess() {
             guess += document.getElementById(`${turn}/${i}`).innerHTML;
         }
     }
-    fetch(`yourhost/api/games/${game_id}/guesses`, {
+    fetch(`//127.0.0.1:8000/api/games/${game_id}/guesses`, {
         method: 'POST', 
         headers: {
             'Content-Type': 'application/json', 
@@ -267,7 +267,7 @@ function playing(result) {
 function hint() {
     var msgDiv = document.getElementById('msg');
     var hintLabel = document.getElementById('hints')
-    fetch(`yourhost/api/games/${game_id}/hints`, {
+    fetch(`//127.0.0.1:8000/api/games/${game_id}/hints`, {
         method: 'POST', 
         headers: {
             'Content-Type': 'application/json', 
