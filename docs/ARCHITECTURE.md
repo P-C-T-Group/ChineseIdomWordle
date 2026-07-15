@@ -4,13 +4,13 @@
 
 前后端分离，通过 REST API 通信。
 
-```
+```text
 Frontend ──HTTP/JSON──▶  Backend
 ```
 
 ## 后端结构
 
-```
+```text
 backend/
 ├── app/
 │   ├── main.py                 # FastAPI 入口，CORS 中间件、UTF-8 JSON 响应
@@ -65,5 +65,3 @@ backend/
 
 - **CORS**: 已配置，允许所有来源跨域请求
 - **JSON 编码**: UTF-8，中文原样输出，`Content-Type: application/json; charset=utf-8`
-
-> **TODO**: 日志输出。当前无日志记录，后续可加入请求日志和错误日志。
