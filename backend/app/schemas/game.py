@@ -47,6 +47,7 @@ class GuessResponse(BaseModel):
     max_rounds: int
     answer: Optional[str] = None
     pinyin: Optional[str] = None
+    definition: Optional[str] = None
 
 
 class HintResponse(BaseModel):
@@ -71,6 +72,7 @@ class GameStateResponse(BaseModel):
     round: int = 0
     answer: Optional[str] = None
     pinyin: Optional[str] = None
+    definition: Optional[str] = None
     hints_used: int = 0
     max_hints: int = 2
     revealed_pinyins: list[str] = []
