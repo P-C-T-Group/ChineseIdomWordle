@@ -86,9 +86,18 @@ def get_daily_idiom(difficulty: Difficulty) -> Idiom:
     global difficulty_dict
     # 根据日期生成每日挑战成语
     load_idioms()
-    today = date.today()
-    rng = Random(today.toordinal())
-    return rng.choice(difficulty_dict[difficulty.value])
+    # 判断是否4月1日
+    is_april_fool = (date.today().month == 4 and date.today().day == 1)
+    if is_april_fool:
+        return Idiom(
+            word="啊舞萌痴",
+            pinyin="ā wǔ méng chī",
+            pinyin_r="a wu meng chi",
+            explanation="愚人节快乐，恭喜触发限定啦！")
+    else:
+        today = date.today()
+        rng = Random(today.toordinal())
+        return rng.choice(difficulty_dict[difficulty.value])
 
 
 def get_random_idiom(difficulty) -> Idiom:
@@ -118,9 +127,10 @@ def create_game(mode: GameMode, difficulty: Difficulty) -> Game:
         candidate_chars=candidates,
         target_idiom=target.word,
         target_pinyin=target.pinyin,
+        target_explanation=target.explanation,
         guesses=[],
         game_status="playing",
-        round=0,
+        round=0
     )
     games[game.game_id] = game
     return game

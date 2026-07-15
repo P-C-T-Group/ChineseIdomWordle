@@ -33,6 +33,7 @@ class Game(BaseModel):
     candidate_chars: list[str]
     target_idiom: str
     target_pinyin: str
+    target_explanation: str = ""
     guesses: list[list[CharFeedback]] = []
     game_status: str = "playing"  # playing | won | lost
     round: int = 0
