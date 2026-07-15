@@ -281,7 +281,7 @@ function hint() {
     var msgDiv = document.getElementById('msg');
     var hintLabel = document.getElementById('hints')
     fetch(`//127.0.0.1:8000/api/games/${game_id}/hints`, {
-        method: 'POST', 
+        method: 'GET', 
         headers: {
             'Content-Type': 'application/json', 
             'Authorization': 'Bearer test-token', 
@@ -296,7 +296,7 @@ function hint() {
                 hintLabel.innerHTML = data['revealed_pinyins'][0]
                 msgDiv.innerHTML = '还有一次提示机会喵'
             } else {
-                hintLabel.innerHTML = data['revealed_pinyins'][0] + '   ' + data['revealed_pinyins'][1]
+                hintLabel.innerHTML = data['revealed_pinyins'][0] + '   ' + data['explanation']
                 msgDiv.innerHTML = '提示机会没有了喵'
             }
         }
