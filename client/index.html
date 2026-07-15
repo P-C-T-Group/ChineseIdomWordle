@@ -23,6 +23,9 @@
             <button class="button" onclick="rank()">
                 <img src="css/svg/排行榜.svg" class="icon" alt="排行榜">
             </button>
+            <button class="button" onclick="getHistory()">
+                <img src="css/svg/历史记录.svg" class="icon" alt="排行榜">
+            </button>
         </div>
     </div>
     <!--开始游戏-->
@@ -58,29 +61,32 @@
         </div>
     </div>
     <!--游戏界面-->
-    <div class="mainGame" id="mainGame">
+    <div class="mainGame">
+        <!--输入区域-->
+        <div class="input" id="mainGame">
 
-    </div>
-    <!--游戏控制-->
-    <div class="guess" id="guess" style="display: none">
-        <div class="hint">
-            <button class="button" id="hint" onclick="hint()">
-                <img src="css/svg/提示.svg" class="icon" alt="提示">
-            </button>
-        <label for="hint" id="hints">获取提示</label>
         </div>
-        <div class="upload">
-            <button class="button" id="upload" onclick="guess()">
-                <img src="css/svg/上传.svg" class="icon" alt="提交">
-            </button>
-            <label for="upload">提交猜测</label>
+        <!--游戏控制-->
+        <div class="guess" id="guess" style="display: none">
+            <div class="hint">
+                <button class="button" id="hint" onclick="hint()">
+                    <img src="css/svg/提示.svg" class="icon" alt="提示">
+                </button>
+            <label for="hint" id="hints">获取提示</label>
+            </div>
+            <div class="upload">
+                <button class="button" id="upload" onclick="guess()">
+                    <img src="css/svg/上传.svg" class="icon" alt="提交">
+                </button>
+                <label for="upload">提交猜测</label>
+            </div>
         </div>
+        <!--候选列表-->
+        <div class="candidate">
+            <div class="line" id="line1"></div>
+            <div class="line" id="line2"></div>
+        </div>
+        <!--通知-->
+        <div class="msg" id="msg"></div>
     </div>
-    <!--候选列表-->
-    <div class="candidate">
-        <div class="line" id="line1"></div>
-        <div class="line" id="line2"></div>
-    </div>
-    <!--通知-->
-    <div class="msg" id="msg"></div>
 </body>

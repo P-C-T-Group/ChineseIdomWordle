@@ -11,11 +11,6 @@ const colorDict = {
     'absent': 'gray'
 }
 
-window.addEventListener('beforeunload', function (event) {
-    event.preventDefault();
-    event.returnValue = '';
-});
-
 
 // 创建游戏
 function startGame()
@@ -52,6 +47,8 @@ function startGame()
         localStorage.setItem('game_id', game_id);
         guessDiv.style.display='flex';
         document.getElementById('hints').innerHTML = '获取提示';
+        var msgDiv = document.getElementById('msg');
+        msgDiv.innerHTML = ''; // 清空输出栏
     })
     .catch(error => console.error('Error:', error));
 }
@@ -112,12 +109,12 @@ function continueGame() {
 function summonBox() {
     for (var i = 0; i < max_rounds; i++) {
         mainGameDiv.innerHTML += `
-        <div class="box" id=${i}>
-            <div class="boxes" id="${i}/0" onclick="delWord(this)"></div>
-            <div class="boxes" id="${i}/1" onclick="delWord(this)"></div>
-            <div class="boxes" id="${i}/2" onclick="delWord(this)"></div>
-            <div class="boxes" id="${i}/3" onclick="delWord(this)"></div>
-        </div>`
+            <div class="box" id=${i}>
+                <div class="boxes" id="${i}/0" onclick="delWord(this)"></div>
+                <div class="boxes" id="${i}/1" onclick="delWord(this)"></div>
+                <div class="boxes" id="${i}/2" onclick="delWord(this)"></div>
+                <div class="boxes" id="${i}/3" onclick="delWord(this)"></div>
+            </div>`
     }
 }
 
