@@ -162,7 +162,7 @@ function continueGame() {
                 }
                 for (var _turn = 0; _turn < data['round']; _turn++) {
                     for (var i = 0; i <= 3; i++) {
-                        document.getElementById(_turn + '/' + i).innerHTML = data['guesses'][_turn][i]['char']
+                        document.getElementById(_turn + '/' + i).innerHTML = data['guesses'][_turn][i]['char'];
                         document.getElementById(_turn + '/' + i).style.backgroundColor = colorDict[data['guesses'][_turn][i]['status']];
                     }
                 }
