@@ -451,6 +451,15 @@ body {
     cursor: pointer;
 }
 
+/* 游戏结束锁定状态：禁用答题区交互 */
+.candidate.locked,
+.guess.locked {
+    pointer-events: none;
+    opacity: 0.45;
+    filter: grayscale(0.4);
+    cursor: not-allowed;
+}
+
 .candidate .line {
     display: flex;
     justify-content: center;

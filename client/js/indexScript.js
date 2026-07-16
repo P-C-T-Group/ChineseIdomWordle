@@ -15,6 +15,21 @@ var isContinuing = false;
 var isHinting = false;
 var isRevealing = false;
 
+// ========== 答题区锁定：游戏结束后半强制封闭，禁止继续答题 ==========
+function lockGame() {
+    var guessEl = document.getElementById('guess');
+    var candEl = document.querySelector('.candidate');
+    if (guessEl) guessEl.classList.add('locked');
+    if (candEl) candEl.classList.add('locked');
+}
+
+function unlockGame() {
+    var guessEl = document.getElementById('guess');
+    var candEl = document.querySelector('.candidate');
+    if (guessEl) guessEl.classList.remove('locked');
+    if (candEl) candEl.classList.remove('locked');
+}
+
 const endMusic = new Audio('结束.wav');
 const startMusic = new Audio('要开始了哟.wav')
 
@@ -122,6 +137,7 @@ function startGame() {
             summonCandidate();
             localStorage.setItem('game_id', game_id);
             guessDiv.style.display = 'flex';
+            unlockGame();
             document.getElementById('hints').innerHTML = '获取提示';
             document.getElementById('msg').innerHTML = '';
 
@@ -164,6 +180,7 @@ function continueGame() {
                 summonCandidate();
                 localStorage.setItem('game_id', game_id);
                 guessDiv.style.display = 'flex';
+                unlockGame();
                 var hintLabel = document.getElementById('hints');
                 if (data['hints_used'] == 1) {
                     hintLabel.innerHTML = data['revealed_pinyins'][0];
@@ -352,6 +369,7 @@ function guess() {
 
 async function won(ans, py, explanation) {
     endMusic.play()
+    lockGame();
     for (var i = 0; i <= 3; i++) {
         document.getElementById(turn + '/' + i).style.backgroundColor = colorDict['correct']
     }
@@ -404,6 +422,8 @@ async function playing(result, gameData) {
         reverseCandidate = {};
         turn += 1;
     } else {
+        // 回合用尽，锁定答题区
+        lockGame();
         // 直接使用submitGuess返回的答案数据，不需要额外调用/reveal接口
         // 后端在最后一回合提交猜词后已经返回了答案
         saveHistory({
@@ -504,6 +524,9 @@ async function revealAnswer() {
             document.getElementById('msg').innerHTML = data['message'] || '揭晓失败喵';
             return;
         }
+
+        // 揭晓答案，锁定答题区
+        lockGame();
 
         // 标记已输入的格子为absent状态
         for (var i = 0; i <= 3; i++) {
