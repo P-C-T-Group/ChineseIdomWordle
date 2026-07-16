@@ -51,9 +51,16 @@ async function main() {
     // 3. 替换 baseURL
     const defaultBaseUrl = '127.0.0.1:8000';
     if (baseUrl) {
-        console.log(`→ 替换 API 地址: ${defaultBaseUrl} → ${baseUrl}`);
+        // 处理用户输入：兼容多种写法
+        let processedBaseUrl = baseUrl.trim();
+        // 移除 http:// 或 https:// 协议头（兼容带协议的输入）
+        processedBaseUrl = processedBaseUrl.replace(/^https?:\/\//i, '');
+        // 移除尾部斜杠（兼容末尾带斜杠的输入）
+        processedBaseUrl = processedBaseUrl.replace(/\/+$/, '');
+
+        console.log(`→ 替换 API 地址: ${defaultBaseUrl} → ${processedBaseUrl}`);
         // 替换所有出现的地方
-        jsCode = jsCode.split(`//${defaultBaseUrl}`).join(`//${baseUrl}`);
+        jsCode = jsCode.split(`//${defaultBaseUrl}`).join(`//${processedBaseUrl}`);
     } else {
         console.log(`→ 保持默认 API 地址: ${defaultBaseUrl}`);
     }
