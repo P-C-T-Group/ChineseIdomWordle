@@ -10,6 +10,10 @@ var mode, difficulty, game_id, max_rounds, candidate_chars, gameStatus;
 var mainGameDiv, startGameDiv, candidateDivLine1, candidateDivLine2, guessDiv;
 var turn, candidate, reverseCandidate, word;
 var isSubmitting = false;
+var isStarting = false;
+var isContinuing = false;
+var isHinting = false;
+var isRevealing = false;
 
 const endMusic = new Audio('结束.wav');
 const startMusic = new Audio('要开始了哟.wav')
@@ -88,6 +92,8 @@ async function submitGuess(guessStr) {
 
 // 创建游戏
 function startGame() {
+    if (isStarting) return;
+    isStarting = true;
     startMusic.play();
     mode = document.querySelector('input[name="mode"]:checked').value;
     difficulty = document.querySelector('input[name="difficulty"]:checked').value;
@@ -121,15 +127,23 @@ function startGame() {
 
             scrollToCurrentTurn();
         })
-        .catch(error => console.error('Error:', error));
+        .catch(error => {
+            console.error('Error:', error);
+            document.getElementById('msg').innerHTML = '开局失败喵，请重试';
+        })
+        .finally(() => {
+            isStarting = false;
+        });
 }
 
 // 继续游戏
 function continueGame() {
+    if (isContinuing) return;
     var msgDiv = document.getElementById('msg');
     if (localStorage.getItem('game_id') == null) {
         msgDiv.innerHTML = '尚未找到上一局喵';
     } else {
+        isContinuing = true;
         fetch(`//127.0.0.1:8000/api/games/${localStorage.getItem('game_id')}`, {
             method: 'GET',
             headers: {
@@ -173,7 +187,13 @@ function continueGame() {
 
                 scrollToCurrentTurn();
             })
-            .catch(error => console.error('Error:', error));
+            .catch(error => {
+                console.error('Error:', error);
+                msgDiv.innerHTML = '恢复游戏失败喵，请重试';
+            })
+            .finally(() => {
+                isContinuing = false;
+            });
     }
 
 }
@@ -423,8 +443,10 @@ async function playing(result, gameData) {
 }
 
 function hint() {
+    if (isHinting) return;
     var msgDiv = document.getElementById('msg');
     var hintLabel = document.getElementById('hints')
+    isHinting = true;
     fetch(`//127.0.0.1:8000/api/games/${game_id}/hints`, {
         method: 'GET',
         headers: {
@@ -446,89 +468,95 @@ function hint() {
                 }
             }
         })
-        .catch(error => console.error('Error:', error));
+        .catch(error => {
+            console.error('Error:', error);
+            msgDiv.innerHTML = '获取提示失败喵，请重试';
+        })
+        .finally(() => {
+            isHinting = false;
+        });
 }
 
 // 揭晓答案
 async function revealAnswer() {
-    if (isSubmitting) return;
-    
-    var re = await CWDialog.confirm('确定要揭晓答案吗？这将直接判定本局为负喵！', {
-        title: '确认揭晓',
-        confirmText: '揭晓答案',
-        cancelText: '取消',
-        danger: true
-    });
-    if (re) {
+    if (isSubmitting || isRevealing) return;
+    isRevealing = true;
+    try {
+        var re = await CWDialog.confirm('确定要揭晓答案吗？这将直接判定本局为负喵！', {
+            title: '确认揭晓',
+            confirmText: '揭晓答案',
+            cancelText: '取消',
+            danger: true
+        });
+        if (!re) return;
+
         isSubmitting = true;
-        fetch(`//127.0.0.1:8000/api/games/${game_id}/reveal`, {
+        var response = await fetch(`//127.0.0.1:8000/api/games/${game_id}/reveal`, {
             method: 'GET',
             headers: {
                 'Content-Type': 'application/json',
                 'Authorization': 'Bearer test-token',
             },
-        })
-            .then(response => response.json())
-            .then(async data => {
-                if (data['status'] === 'fail') {
-                    document.getElementById('msg').innerHTML = data['message'] || '揭晓失败喵';
-                    isSubmitting = false;
-                    return;
+        });
+        var data = await response.json();
+
+        if (data['status'] === 'fail') {
+            document.getElementById('msg').innerHTML = data['message'] || '揭晓失败喵';
+            return;
+        }
+
+        // 标记已输入的格子为absent状态
+        for (var i = 0; i <= 3; i++) {
+            if (!word[i]) {
+                var charDiv = document.getElementById(turn + '/' + i);
+                charDiv.style.backgroundColor = colorDict['absent'];
+                var candidateId = reverseCandidate[i];
+                if (candidateId) {
+                    document.getElementById(candidateId).style.backgroundColor = colorDict['absent'];
                 }
-                
-                // 标记已输入的格子为absent状态
-                for (var i = 0; i <= 3; i++) {
-                    if (!word[i]) {
-                        var charDiv = document.getElementById(turn + '/' + i);
-                        charDiv.style.backgroundColor = colorDict['absent'];
-                        var candidateId = reverseCandidate[i];
-                        if (candidateId) {
-                            document.getElementById(candidateId).style.backgroundColor = colorDict['absent'];
-                        }
-                    }
-                }
-                
-                // 保存到历史记录
-                saveHistory({
-                    game_id: game_id,
-                    answer: data['answer'],
-                    pinyin: data['pinyin'],
-                    explanation: data['explanation'] || null,
-                    status: 'lost',
-                    rounds: data['round'],
-                    max_rounds: data['max_rounds'],
-                    mode: mode,
-                    difficulty: difficulty,
-                    timestamp: Date.now()
-                });
-                
-                document.getElementById('msg').innerHTML = '答案是: ' + data['answer'] + '(' + data['pinyin'] + ')';
-                var revealMsg = "揭晓答案了喵! \n答案是: " + data['answer'] + '(' + data['pinyin'] + ')';
-                if (data['explanation']) {
-                    revealMsg += "\n释义: " + data['explanation'];
-                }
-                revealMsg += "\n\n是否重启游戏喵";
-                var re = await CWDialog.confirm(revealMsg, {
-                    title: '答案揭晓',
-                    confirmText: '重启',
-                    cancelText: '关闭'
-                });
-                if (re == true) {
-                    document.getElementById('msg').innerHTML = '';
-                    document.getElementById("line1").innerHTML = '';
-                    document.getElementById("line2").innerHTML = '';
-                    document.getElementById('mainGame').innerHTML = '';
-                    document.getElementById('guess').style.display = 'none';
-                    document.getElementById('startPanel').style.display = 'grid';
-                }
-                localStorage.removeItem("game_id");
-                isSubmitting = false;
-            })
-            .catch(error => {
-                console.error('Error:', error);
-                document.getElementById('msg').innerHTML = '揭晓失败喵，请重试';
-                isSubmitting = false;
-            });
+            }
+        }
+
+        // 保存到历史记录
+        saveHistory({
+            game_id: game_id,
+            answer: data['answer'],
+            pinyin: data['pinyin'],
+            explanation: data['explanation'] || null,
+            status: 'lost',
+            rounds: data['round'],
+            max_rounds: data['max_rounds'],
+            mode: mode,
+            difficulty: difficulty,
+            timestamp: Date.now()
+        });
+
+        document.getElementById('msg').innerHTML = '答案是: ' + data['answer'] + '(' + data['pinyin'] + ')';
+        var revealMsg = "揭晓答案了喵! \n答案是: " + data['answer'] + '(' + data['pinyin'] + ')';
+        if (data['explanation']) {
+            revealMsg += "\n释义: " + data['explanation'];
+        }
+        revealMsg += "\n\n是否重启游戏喵";
+        var re2 = await CWDialog.confirm(revealMsg, {
+            title: '答案揭晓',
+            confirmText: '重启',
+            cancelText: '关闭'
+        });
+        if (re2 == true) {
+            document.getElementById('msg').innerHTML = '';
+            document.getElementById("line1").innerHTML = '';
+            document.getElementById("line2").innerHTML = '';
+            document.getElementById('mainGame').innerHTML = '';
+            document.getElementById('guess').style.display = 'none';
+            document.getElementById('startPanel').style.display = 'grid';
+        }
+        localStorage.removeItem("game_id");
+    } catch (error) {
+        console.error('Error:', error);
+        document.getElementById('msg').innerHTML = '揭晓失败喵，请重试';
+    } finally {
+        isSubmitting = false;
+        isRevealing = false;
     }
 }
 
