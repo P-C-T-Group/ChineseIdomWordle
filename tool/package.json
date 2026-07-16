@@ -1,0 +1,28 @@
+{
+  "name": "chineseidomwordle",
+  "version": "1.0.0",
+  "description": "一个中文成语版的 Wordle 猜词游戏。玩家在有限轮次内，通过候选字组合猜出目标成语。",
+  "main": "obfuscate.js",
+  "directories": {
+    "doc": "docs"
+  },
+  "scripts": {
+    "obfuscate": "node obfuscate.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/P-C-T-Group/ChineseIdomWordle.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/P-C-T-Group/ChineseIdomWordle/issues"
+  },
+  "homepage": "https://github.com/P-C-T-Group/ChineseIdomWordle#readme",
+  "devDependencies": {
+    "javascript-obfuscator": "^5.4.7"
+  }
+}

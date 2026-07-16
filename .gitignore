@@ -48,3 +48,8 @@ htmlcov/
 # Logs
 *.log
 */logs/
+
+# nodejs
+node_modules/
+*/node_modules/
+*.backup

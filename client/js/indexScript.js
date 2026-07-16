@@ -73,7 +73,7 @@ async function submitGuess(guessStr) {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
-                'Authorization': 'Bearer 7sK9pR2tG5',
+                'Authorization': 'Bearer test-token',
             },
             body: JSON.stringify({ guess: guessStr })
         });
