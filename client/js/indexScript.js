@@ -348,7 +348,12 @@ function won(ans, py, explanation) {
         timestamp: Date.now()
     });
 
-    var re = confirm(turn + '回合猜出: ' + ans + '(' + py + ')' + "了喵, 是否重启游戏喵");
+    var winMsg = turn + '回合猜出: ' + ans + '(' + py + ')' + "了喵";
+    if (explanation) {
+        winMsg += "\n释义: " + explanation;
+    }
+    winMsg += "\n\n是否重启游戏喵";
+    var re = confirm(winMsg);
     if (re == true) {
         document.getElementById('msg').innerHTML = '';
         document.getElementById("line1").innerHTML = '';
@@ -396,7 +401,12 @@ function playing(result) {
                 });
 
                 document.getElementById('msg').innerHTML = '答案是: ' + data['answer'] + '(' + data['pinyin'] + ')';
-                var re = confirm("没有猜出来喵, 答案是 " + data['answer'] + '(' + data['pinyin'] + '), 是否重启游戏喵');
+                var loseMsg = "没有猜出来喵, 答案是 " + data['answer'] + '(' + data['pinyin'] + ')';
+                if (data['explanation']) {
+                    loseMsg += "\n释义: " + data['explanation'];
+                }
+                loseMsg += "\n\n是否重启游戏喵";
+                var re = confirm(loseMsg);
                 if (re == true) {
                     document.getElementById('msg').innerHTML = '';
                     document.getElementById("line1").innerHTML = '';
@@ -498,7 +508,12 @@ function revealAnswer() {
                 });
                 
                 document.getElementById('msg').innerHTML = '答案是: ' + data['answer'] + '(' + data['pinyin'] + ')';
-                var re = confirm("揭晓答案了喵, 答案是 " + data['answer'] + '(' + data['pinyin'] + '), 是否重启游戏喵');
+                var revealMsg = "揭晓答案了喵, 答案是: " + data['answer'] + '(' + data['pinyin'] + ')';
+                if (data['explanation']) {
+                    revealMsg += "\n释义: " + data['explanation'];
+                }
+                revealMsg += "\n\n是否重启游戏喵";
+                var re = confirm(revealMsg);
                 if (re == true) {
                     document.getElementById('msg').innerHTML = '';
                     document.getElementById("line1").innerHTML = '';
