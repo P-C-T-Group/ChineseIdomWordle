@@ -1,0 +1,137 @@
+/* ===== 排行榜装修中页面样式 ===== */
+.constructionContainer {
+    width: 90%;
+    max-width: 600px;
+    margin: 3rem auto;
+    padding: 3rem 2rem;
+    text-align: center;
+    background-color: var(--card-bg);
+    border-radius: var(--radius-md);
+    box-shadow: var(--shadow-md);
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+}
+
+.constructionIcon {
+    width: 5em;
+    height: 5em;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background-color: var(--bg-secondary);
+    border-radius: 50%;
+    margin-bottom: 1.5rem;
+    animation: rotate 8s linear infinite;
+}
+
+.constructionIcon svg {
+    width: 3em;
+    height: 3em;
+    stroke: var(--primary);
+}
+
+@keyframes rotate {
+    from {
+        transform: rotate(0deg);
+    }
+
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+.constructionTitle {
+    font-size: 2em;
+    font-family: "85W", sans-serif;
+    color: var(--primary);
+    margin-bottom: 1rem;
+    letter-spacing: 0.1em;
+}
+
+.constructionText {
+    font-size: 1.2em;
+    color: var(--text-secondary);
+    line-height: 1.8;
+}
+
+/* ===== 响应式适配 ===== */
+/* 平板端 */
+@media (max-width: 1024px) {
+    .constructionTitle {
+        font-size: 1.8em;
+    }
+
+    .constructionIcon {
+        width: 4.5em;
+        height: 4.5em;
+    }
+
+    .constructionIcon svg {
+        width: 2.7em;
+        height: 2.7em;
+    }
+}
+
+/* 移动端 */
+@media (max-width: 768px) {
+    .constructionContainer {
+        width: 95%;
+        margin: 2rem auto;
+        padding: 2.5rem 1.5rem;
+    }
+
+    .constructionTitle {
+        font-size: 1.6em;
+    }
+
+    .constructionText {
+        font-size: 1.1em;
+    }
+
+    .constructionIcon {
+        width: 4em;
+        height: 4em;
+        margin-bottom: 1.2rem;
+    }
+
+    .constructionIcon svg {
+        width: 2.4em;
+        height: 2.4em;
+    }
+}
+
+/* 小屏手机 */
+@media (max-width: 480px) {
+    .constructionContainer {
+        padding: 2rem 1.2rem;
+        margin: 1.5rem auto;
+    }
+
+    .constructionTitle {
+        font-size: 1.4em;
+    }
+
+    .constructionText {
+        font-size: 1em;
+    }
+
+    .constructionIcon {
+        width: 3.5em;
+        height: 3.5em;
+    }
+
+    .constructionIcon svg {
+        width: 2em;
+        height: 2em;
+    }
+}
+
+/* 减少动画偏好设置 */
+@media (prefers-reduced-motion: reduce) {
+    .constructionIcon {
+        animation: none;
+    }
+}
