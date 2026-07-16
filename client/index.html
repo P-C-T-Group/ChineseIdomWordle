@@ -1,65 +1,108 @@
 <!DOCTYPE html>
+<html lang="zh-CN">
+
 <head>
     <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <meta http-equiv="Access-Control-Allow-Origin" content="*">
     <link rel="stylesheet" type="text/css" href="css/indexStyle.css">
     <link rel="icon" href="icons/256.ico" sizes="256x256">
     <script src="js/indexScript.js"></script>
     <title>成语Wordle</title>
 </head>
+
 <body>
     <!--导航栏-->
     <div class="MenuBar">
         <div class="leftMenu">
-            <button class="button" onclick="start()">
-                <img src="css/svg/主页.svg" class="icon" alt="主页">
+            <button class="button" onclick="start()" title="主页">
+                <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                    stroke-linecap="round" stroke-linejoin="round" aria-label="主页">
+                    <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
+                    <polyline points="9 22 9 12 15 12 15 22"></polyline>
+                </svg>
+            </button>
+            <button class="button" onclick="toggleTheme()" title="切换深浅色模式">
+                <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                    stroke-linecap="round" stroke-linejoin="round" aria-label="切换主题">
+                    <!-- 太阳图标：深色模式下显示 -->
+                    <g class="sun-icon">
+                        <circle cx="12" cy="12" r="5"></circle>
+                        <line x1="12" y1="1" x2="12" y2="3"></line>
+                        <line x1="12" y1="21" x2="12" y2="23"></line>
+                        <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+                        <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+                        <line x1="1" y1="12" x2="3" y2="12"></line>
+                        <line x1="21" y1="12" x2="23" y2="12"></line>
+                        <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+                        <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+                    </g>
+                    <!-- 月亮图标：亮色模式下显示 -->
+                    <path class="moon-icon" d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+                </svg>
             </button>
         </div>
         <div class="title">成语Wordle</div>
         <div class="rightMenu">
-            <button class="button" onclick="help()">
-                <img src="css/svg/帮助.svg" class="icon" alt="帮助">
+            <button class="button" onclick="help()" title="帮助">
+                <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                    stroke-linecap="round" stroke-linejoin="round" aria-label="帮助">
+                    <circle cx="12" cy="12" r="10"></circle>
+                    <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"></path>
+                    <line x1="12" y1="17" x2="12.01" y2="17"></line>
+                </svg>
             </button>
-            <button class="button" onclick="rank()">
-                <img src="css/svg/排行榜.svg" class="icon" alt="排行榜">
+            <button class="button" onclick="rank()" title="排行榜">
+                <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                    stroke-linecap="round" stroke-linejoin="round" aria-label="排行榜">
+                    <line x1="18" y1="20" x2="18" y2="10"></line>
+                    <line x1="12" y1="20" x2="12" y2="4"></line>
+                    <line x1="6" y1="20" x2="6" y2="14"></line>
+                </svg>
             </button>
-            <button class="button" onclick="getHistory()">
-                <img src="css/svg/历史记录.svg" class="icon" alt="排行榜">
+            <button class="button" onclick="getHistory()" title="历史记录">
+                <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                    stroke-linecap="round" stroke-linejoin="round" aria-label="历史记录">
+                    <circle cx="12" cy="12" r="10"></circle>
+                    <polyline points="12 6 12 12 16 14"></polyline>
+                </svg>
             </button>
         </div>
     </div>
+
     <!--开始游戏-->
-    <div class="startGame" id="startGame" >
+    <div class="startGame" id="startPanel">
         <div class="text">
-            <label for="mode">选择模式</label>
+            <label for="mode-daily">选择模式</label>
         </div>
         <div class="sl">
             <label>
-                <input id="mode" type="radio" name="mode" value="daily">日常挑战
+                <input id="mode-daily" type="radio" name="mode" value="daily">日常挑战
             </label>
             <label>
-                <input id="mode" type="radio" name="mode" value="unlimited" checked>无限模式
+                <input id="mode-unlimited" type="radio" name="mode" value="unlimited" checked>无限模式
             </label>
         </div>
         <div class="text">
-            <label for="difficulty">选择难度</label>
+            <label for="difficulty-medium">选择难度</label>
         </div>
         <div class="sl">
             <label>
-                <input id="difficulty" type="radio" name="difficulty" value="easy">简单
+                <input id="difficulty-easy" type="radio" name="difficulty" value="easy">简单
             </label>
             <label>
-                <input id="difficulty" type="radio" name="difficulty" value="medium" checked>媒介
+                <input id="difficulty-medium" type="radio" name="difficulty" value="medium" checked>中等
             </label>
             <label>
-                <input id="difficulty" type="radio" name="difficulty" value="hard">硬
+                <input id="difficulty-hard" type="radio" name="difficulty" value="hard">困难
             </label>
         </div>
-        <div class="button">
-            <button onclick="startGame()" class="button">はじまるよ！</button>
-            <button onclick="continueGame()" class="button">继续</button>
+        <div class="button-group">
+            <button onclick="startGame()" class="button primary-btn">はじまるよ！</button>
+            <button onclick="continueGame()" class="button secondary-btn">继续上局</button>
         </div>
     </div>
+
     <!--游戏界面-->
     <div class="mainGame">
         <!--输入区域-->
@@ -69,16 +112,28 @@
         <!--游戏控制-->
         <div class="guess" id="guess" style="display: none">
             <div class="hint">
-                <button class="button" id="hint" onclick="hint()">
-                    <img src="css/svg/提示.svg" class="icon" alt="提示">
+                <button class="button" id="hint-btn" onclick="hint()">
+                    <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                        stroke-linecap="round" stroke-linejoin="round" aria-label="提示">
+                        <path d="M9 18h6"></path>
+                        <path d="M10 22h4"></path>
+                        <path
+                            d="M15.09 14c.18-.98.65-1.74 1.41-2.5A4.65 4.65 0 0 0 18 8 6 6 0 0 0 6 8c0 1 .23 2.23 1.5 3.5A4.61 4.61 0 0 1 8.91 14">
+                        </path>
+                    </svg>
                 </button>
-            <label for="hint" id="hints">获取提示</label>
+                <label for="hint-btn" id="hints">获取提示</label>
             </div>
             <div class="upload">
-                <button class="button" id="upload" onclick="guess()">
-                    <img src="css/svg/上传.svg" class="icon" alt="提交">
+                <button class="button" id="upload-btn" onclick="guess()">
+                    <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                        stroke-linecap="round" stroke-linejoin="round" aria-label="提交">
+                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                        <polyline points="17 8 12 3 7 8"></polyline>
+                        <line x1="12" y1="3" x2="12" y2="15"></line>
+                    </svg>
                 </button>
-                <label for="upload">提交猜测</label>
+                <label for="upload-btn">提交猜测</label>
             </div>
         </div>
         <!--候选列表-->
@@ -89,4 +144,10 @@
         <!--通知-->
         <div class="msg" id="msg"></div>
     </div>
+
+    <footer class="footer">
+        <span>成语Wordle ©<a href="https://whj.zdeweb.cn" target="_blank">物化技</a> 2026 ｜ <a href="https://github.com/P-C-T-Group/ChineseIdomWordle" target="_blank">GitHub</a> ｜ <a href="https://doc.wordle.whj.zdeweb.cn" target="_blank">API文档</a></span>
+    </footer>
 </body>
+
+</html>
