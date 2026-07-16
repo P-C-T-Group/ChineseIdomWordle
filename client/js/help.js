@@ -49,8 +49,13 @@ function getHistoryList() {
 }
 
 // 清空历史记录
-function clearHistory() {
-    if (confirm('确定要清空所有历史记录吗？')) {
+async function clearHistory() {
+    const ok = await CWDialog.confirm('确定要清空所有历史记录吗？', {
+        title: '确认清空',
+        confirmText: '清空',
+        danger: true
+    });
+    if (ok) {
         localStorage.removeItem(HISTORY_KEY);
         renderHistory();
     }

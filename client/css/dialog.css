@@ -1,0 +1,250 @@
+/* ============================================================
+ * 内置弹窗组件（Dialog / Modal）
+ * 复用 indexStyle.css 中的主题变量，自动适配深色模式与多端
+ * 依赖变量：--bg, --bg-secondary, --card-bg, --text, --text-secondary,
+ *           --primary, --primary-hover, --primary-active,
+ *           --border, --border-dark, --shadow-md, --radius-md, --transition
+ * ============================================================ */
+
+/* ===== 遮罩层 ===== */
+.cw-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 9999;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 1rem;
+    background-color: rgba(0, 0, 0, 0.45);
+    backdrop-filter: blur(4px);
+    -webkit-backdrop-filter: blur(4px);
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.2s ease, visibility 0.2s ease;
+}
+
+.cw-overlay.cw-show {
+    opacity: 1;
+    visibility: visible;
+}
+
+/* ===== 弹窗主体 ===== */
+.cw-dialog {
+    width: 100%;
+    max-width: 420px;
+    max-height: calc(100vh - 2rem);
+    display: flex;
+    flex-direction: column;
+    background-color: var(--card-bg);
+    color: var(--text);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    box-shadow: var(--shadow-md);
+    overflow: hidden;
+    transform: translateY(16px) scale(0.96);
+    transition: transform 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.cw-overlay.cw-show .cw-dialog {
+    transform: translateY(0) scale(1);
+}
+
+/* ===== 标题栏 ===== */
+.cw-dialog__header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 1rem 1.25rem;
+    border-bottom: 1px solid var(--border);
+    flex-shrink: 0;
+}
+
+.cw-dialog__title {
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: var(--text);
+    margin: 0;
+    letter-spacing: 0.05em;
+}
+
+.cw-dialog__close {
+    width: 2rem;
+    height: 2rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: none;
+    background: transparent;
+    color: var(--text-secondary);
+    font-size: 1.4rem;
+    line-height: 1;
+    cursor: pointer;
+    border-radius: var(--radius-sm, 8px);
+    transition: var(--transition);
+}
+
+.cw-dialog__close:hover {
+    color: var(--text);
+    background-color: var(--bg-secondary);
+}
+
+.cw-dialog__close:active {
+    transform: scale(0.92);
+}
+
+/* ===== 内容区 ===== */
+.cw-dialog__body {
+    padding: 1.25rem;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    flex: 1 1 auto;
+    font-size: 1rem;
+    line-height: 1.6;
+    color: var(--text);
+    white-space: pre-wrap;
+    word-break: break-word;
+}
+
+.cw-dialog__body em {
+    font-style: normal;
+    color: var(--text-secondary);
+    font-size: 0.92em;
+}
+
+/* ===== 按钮区 ===== */
+.cw-dialog__footer {
+    display: flex;
+    gap: 0.75rem;
+    padding: 1rem 1.25rem;
+    border-top: 1px solid var(--border);
+    flex-shrink: 0;
+}
+
+.cw-dialog__footer .cw-btn {
+    flex: 1;
+}
+
+/* ===== 通用按钮 ===== */
+.cw-btn {
+    min-height: 2.75rem;
+    padding: 0.5rem 1rem;
+    font-size: 1rem;
+    font-family: inherit;
+    border: 1px solid var(--border-dark);
+    border-radius: var(--radius-sm, 8px);
+    background-color: var(--bg-secondary);
+    color: var(--text);
+    cursor: pointer;
+    transition: var(--transition);
+    -webkit-tap-highlight-color: transparent;
+}
+
+.cw-btn:hover {
+    border-color: var(--primary);
+    color: var(--primary);
+}
+
+.cw-btn:active {
+    transform: scale(0.97);
+}
+
+/* 主按钮 */
+.cw-btn--primary {
+    background-color: var(--primary);
+    border-color: var(--primary);
+    color: #ffffff;
+}
+
+.cw-btn--primary:hover {
+    background-color: var(--primary-hover);
+    border-color: var(--primary-hover);
+    color: #ffffff;
+}
+
+.cw-btn--primary:active {
+    background-color: var(--primary-active);
+    border-color: var(--primary-active);
+}
+
+/* 危险按钮（用于清空历史等破坏性操作） */
+.cw-btn--danger {
+    background-color: var(--primary);
+    border-color: var(--primary);
+    color: #ffffff;
+}
+
+.cw-btn--danger:hover {
+    background-color: #ff4d4f;
+    border-color: #ff4d4f;
+    color: #ffffff;
+}
+
+.cw-btn--danger:active {
+    background-color: #d9363e;
+    border-color: #d9363e;
+}
+
+/* ===== 移动端适配 ===== */
+@media (max-width: 480px) {
+    .cw-overlay {
+        padding: 0.5rem;
+    }
+
+    .cw-dialog {
+        max-width: 100%;
+    }
+
+    .cw-dialog__header,
+    .cw-dialog__body,
+    .cw-dialog__footer {
+        padding: 0.9rem 1rem;
+    }
+
+    .cw-dialog__title {
+        font-size: 1.05rem;
+    }
+
+    .cw-dialog__footer {
+        gap: 0.5rem;
+    }
+
+    .cw-btn {
+        min-height: 2.6rem;
+        font-size: 0.95rem;
+    }
+}
+
+/* ===== 深色模式微调 ===== */
+@media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) .cw-overlay {
+        background-color: rgba(0, 0, 0, 0.6);
+    }
+
+    :root:not([data-theme="light"]) .cw-btn--danger:hover {
+        background-color: #ff7875;
+        border-color: #ff7875;
+    }
+}
+
+[data-theme="dark"] .cw-overlay {
+    background-color: rgba(0, 0, 0, 0.6);
+}
+
+[data-theme="dark"] .cw-btn--danger:hover {
+    background-color: #ff7875;
+    border-color: #ff7875;
+}
+
+/* ===== 尊重无障碍：减弱动画偏好 ===== */
+@media (prefers-reduced-motion: reduce) {
+    .cw-overlay,
+    .cw-dialog,
+    .cw-btn,
+    .cw-dialog__close {
+        transition: none !important;
+    }
+
+    .cw-dialog {
+        transform: none;
+    }
+}

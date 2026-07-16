@@ -208,8 +208,12 @@ function summonCandidate() {
 }
 
 // 菜单栏
-function start() {
-    var re = confirm("是否回到首页");
+async function start() {
+    var re = await CWDialog.confirm('是否回到首页？', {
+        title: '确认返回',
+        confirmText: '返回',
+        cancelText: '取消'
+    });
     if (re == true) {
         document.getElementById('msg').innerHTML = '';
         document.getElementById("line1").innerHTML = '';
@@ -308,7 +312,7 @@ function guess() {
     var guessStr = '';
     for (var i = 0; i <= 3; i++) {
         if (word[i]) {
-            msgDiv.innerHTML = '我们只支持四字成语喵';
+            msgDiv.innerHTML = '我们只猜四字成语喵';
             return;
         } else {
             guessStr += document.getElementById(`${turn}/${i}`).innerHTML;
@@ -326,7 +330,7 @@ function guess() {
     });
 }
 
-function won(ans, py, explanation) {
+async function won(ans, py, explanation) {
     endMusic.play()
     for (var i = 0; i <= 3; i++) {
         document.getElementById(turn + '/' + i).style.backgroundColor = colorDict['correct']
@@ -353,7 +357,11 @@ function won(ans, py, explanation) {
         winMsg += "\n释义: " + explanation;
     }
     winMsg += "\n\n是否重启游戏喵";
-    var re = confirm(winMsg);
+    var re = await CWDialog.confirm(winMsg, {
+        title: '恭喜通关',
+        confirmText: '重启新游戏',
+        cancelText: '关闭'
+    });
     if (re == true) {
         document.getElementById('msg').innerHTML = '';
         document.getElementById("line1").innerHTML = '';
@@ -365,7 +373,7 @@ function won(ans, py, explanation) {
     localStorage.removeItem("game_id");
 }
 
-function playing(result, gameData) {
+async function playing(result, gameData) {
     for (var i = 0; i <= 3; i++) {
         document.getElementById(reverseCandidate[i]).style.backgroundColor = colorDict[result[i]['status']]
         document.getElementById(turn + '/' + i).style.backgroundColor = colorDict[result[i]['status']]
@@ -392,12 +400,16 @@ function playing(result, gameData) {
         });
 
         document.getElementById('msg').innerHTML = '答案是: ' + gameData['answer'] + '(' + gameData['pinyin'] + ')';
-        var loseMsg = "没有猜出来喵, 答案是 " + gameData['answer'] + '(' + gameData['pinyin'] + ')';
+        var loseMsg = "没有猜出来喵! \n答案是: " + gameData['answer'] + '(' + gameData['pinyin'] + ')';
         if (gameData['explanation']) {
             loseMsg += "\n释义: " + gameData['explanation'];
         }
         loseMsg += "\n\n是否重启游戏喵";
-        var re = confirm(loseMsg);
+        var re = await CWDialog.confirm(loseMsg, {
+            title: '游戏结束',
+            confirmText: '重启',
+            cancelText: '关闭'
+        });
         if (re == true) {
             document.getElementById('msg').innerHTML = '';
             document.getElementById("line1").innerHTML = '';
@@ -438,10 +450,16 @@ function hint() {
 }
 
 // 揭晓答案
-function revealAnswer() {
+async function revealAnswer() {
     if (isSubmitting) return;
     
-    if (confirm('确定要揭晓答案吗？这将直接判定本局为负喵！')) {
+    var re = await CWDialog.confirm('确定要揭晓答案吗？这将直接判定本局为负喵！', {
+        title: '确认揭晓',
+        confirmText: '揭晓答案',
+        cancelText: '取消',
+        danger: true
+    });
+    if (re) {
         isSubmitting = true;
         fetch(`//127.0.0.1:8000/api/games/${game_id}/reveal`, {
             method: 'GET',
@@ -451,7 +469,7 @@ function revealAnswer() {
             },
         })
             .then(response => response.json())
-            .then(data => {
+            .then(async data => {
                 if (data['status'] === 'fail') {
                     document.getElementById('msg').innerHTML = data['message'] || '揭晓失败喵';
                     isSubmitting = false;
@@ -485,12 +503,16 @@ function revealAnswer() {
                 });
                 
                 document.getElementById('msg').innerHTML = '答案是: ' + data['answer'] + '(' + data['pinyin'] + ')';
-                var revealMsg = "揭晓答案了喵, 答案是: " + data['answer'] + '(' + data['pinyin'] + ')';
+                var revealMsg = "揭晓答案了喵! \n答案是: " + data['answer'] + '(' + data['pinyin'] + ')';
                 if (data['explanation']) {
                     revealMsg += "\n释义: " + data['explanation'];
                 }
                 revealMsg += "\n\n是否重启游戏喵";
-                var re = confirm(revealMsg);
+                var re = await CWDialog.confirm(revealMsg, {
+                    title: '答案揭晓',
+                    confirmText: '重启',
+                    cancelText: '关闭'
+                });
                 if (re == true) {
                     document.getElementById('msg').innerHTML = '';
                     document.getElementById("line1").innerHTML = '';
@@ -530,8 +552,14 @@ function getHistoryList() {
 }
 
 // 清空历史记录
-function clearHistory() {
-    if (confirm('确定要清空所有历史记录吗？')) {
+async function clearHistory() {
+    var re = await CWDialog.confirm('确定要清空所有历史记录吗？', {
+        title: '确认清空',
+        confirmText: '清空',
+        cancelText: '取消',
+        danger: true
+    });
+    if (re) {
         localStorage.removeItem(HISTORY_KEY);
         renderHistory();
     }
