@@ -181,14 +181,14 @@ function continueGame() {
 // 生成待输入区
 function summonBox() {
     for (var i = 0; i < max_rounds; i++) {
-        mainGameDiv.innerHTML += `
+        mainGameDiv.innerHTML = `
             <div class="box" id=${i}>
                 <div class="round-number">${i + 1}</div>
                 <div class="boxes" id="${i}/0" onclick="delWord(this)"></div>
                 <div class="boxes" id="${i}/1" onclick="delWord(this)"></div>
                 <div class="boxes" id="${i}/2" onclick="delWord(this)"></div>
                 <div class="boxes" id="${i}/3" onclick="delWord(this)"></div>
-            </div>`
+            </div>` + mainGameDiv.innerHTML
     }
 }
 
