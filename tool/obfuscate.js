@@ -169,39 +169,39 @@ async function main() {
     // 在 JS 代码开头插入反调试代码
     jsCode = antiDebugCode + jsCode;
 
-    // 6. 混淆代码
+    // 6. 混淆代码 - 精简配置，目标膨胀比例 ~120%
     console.log('→ 正在混淆代码...');
     const obfuscationResult = JavaScriptObfuscator.obfuscate(jsCode, {
-        // 压缩选项
+        // 基础压缩
         compact: true,
-        controlFlowFlattening: true,
-        controlFlowFlatteningThreshold: 0.75,
-        deadCodeInjection: true,
-        deadCodeInjectionThreshold: 0.4,
-        debugProtection: true,
-        debugProtectionInterval: 2000,
-        disableConsoleOutput: true,
-        identifierNamesGenerator: 'hexadecimal',
-        log: false,
-        numbersToExpressions: true,
-        renameGlobals: false,
-        selfDefending: true,
         simplify: true,
-        splitStrings: true,
-        splitStringsChunkLength: 5,
+
+        // 标识符混淆（轻量，体积影响小）
+        identifierNamesGenerator: 'hexadecimal',
+        renameGlobals: false,
+
+        // 核心保护（保留）
+        selfDefending: true,
+        debugProtection: true,
+        debugProtectionInterval: 8000, // 间隔更长，降低运行时开销
+        disableConsoleOutput: true,
+
+        // 高膨胀选项 - 全部关闭
+        controlFlowFlattening: false,   // 控制流扁平化 - 关闭（体积大户）
+        deadCodeInjection: false,       // 死代码注入 - 关闭（体积大户）
+        numbersToExpressions: false,    // 数字转表达式 - 关闭
+        splitStrings: false,            // 字符串拆分 - 关闭
+        transformObjectKeys: false,     // 对象键转换 - 关闭
+        unicodeEscapeSequence: false,   // Unicode转义 - 关闭
+
+        // 字符串数组（轻量配置）
         stringArray: true,
-        stringArrayCallsTransform: true,
-        stringArrayEncoding: ['rc4'],
-        stringArrayIndexShift: true,
+        stringArrayEncoding: [],        // 不加密，减少运行时开销和体积
+        stringArrayWrappersCount: 1,    // 最少包装器
+        stringArrayThreshold: 0.3,      // 只提取30%字符串到数组
         stringArrayRotate: true,
         stringArrayShuffle: true,
-        stringArrayWrappersCount: 5,
-        stringArrayWrappersChainedCalls: true,
-        stringArrayWrappersParametersMaxCount: 5,
-        stringArrayWrappersType: 'function',
-        stringArrayThreshold: 0.8,
-        transformObjectKeys: true,
-        unicodeEscapeSequence: false,
+
         target: 'browser',
         seed: Math.floor(Math.random() * 1000000)
     });
