@@ -517,6 +517,25 @@ body {
     letter-spacing: 0.1em;
 }
 
+.footer a {
+    color: var(--primary);
+    text-decoration: none;
+    transition: var(--transition);
+}
+
+.footer a:visited {
+    color: var(--primary);
+}
+
+.footer a:hover {
+    color: var(--primary-hover);
+    text-decoration: underline;
+}
+
+.footer a:active {
+    color: var(--primary-active);
+}
+
 /* ===== 游戏状态色兼容 ===== */
 [style*="background-color: green"],
 [style*="background-color: #52c41a"] {
