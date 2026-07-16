@@ -12,6 +12,7 @@
 const fs = require('fs');
 const path = require('path');
 const readline = require('readline');
+const crypto = require('crypto');
 
 const JavaScriptObfuscator = require('javascript-obfuscator');
 
@@ -36,7 +37,7 @@ async function main() {
 
     // 1. 获取用户输入
     const baseUrl = await question('请输入 API Base URL（不含 /api，直接回车保持默认 127.0.0.1:8000）: ');
-    const token = await question('请输入 API Token（直接回车保持默认 test-token）: ');
+    const token = await question('请输入 API Token（原始字符串，不是sha256哈希！直接回车保持默认 test-token）: ');
 
     console.log('\n正在处理...');
 
@@ -65,13 +66,39 @@ async function main() {
         console.log(`→ 保持默认 API 地址: ${defaultBaseUrl}`);
     }
 
-    // 4. 替换 token
+    // 4. 替换 token - 修复bug：使用正则匹配完整的 'Bearer xxx' 格式
     const defaultToken = 'test-token';
+    const actualToken = token || defaultToken;
+
+    // 匹配模式：'Bearer <任意token>'
+    const bearerPattern = /'Bearer ([^']+)'/g;
+    const matches = jsCode.match(bearerPattern) || [];
+    console.log(`→ 找到 ${matches.length} 处 Bearer Token 配置`);
+
+    // 执行替换
+    jsCode = jsCode.replace(bearerPattern, `'Bearer ${actualToken}'`);
+
     if (token) {
-        console.log(`→ 替换 Token: ${defaultToken} → ${token}`);
-        jsCode = jsCode.split(`'${defaultToken}'`).join(`'${token}'`);
+        console.log(`→ 替换 Token: ${defaultToken} → ${actualToken}`);
+
+        // 验证替换是否成功
+        const newMatches = jsCode.match(bearerPattern) || [];
+        const replacedOk = newMatches.length === matches.length &&
+            newMatches.every(m => m === `'Bearer ${actualToken}'`);
+
+        if (replacedOk) {
+            console.log(`→ 验证：所有 ${newMatches.length} 处 Token 已替换成功 ✓`);
+        } else {
+            console.log(`→ ⚠️  警告：Token替换可能不完整，请手动检查！`);
+        }
+
+        // 计算并显示sha256，方便用户添加到后端
+        const tokenHash = crypto.createHash('sha256').update(actualToken).digest('hex');
+        console.log(`  注意：请确保后端 token-sha256.txt 文件中已添加该token的sha256哈希值`);
+        console.log(`  该Token的SHA256值（需添加到后端合法列表）: ${tokenHash}`);
     } else {
         console.log(`→ 保持默认 Token: ${defaultToken}`);
+        console.log(`  对应的SHA256值: 4c5dc9b7708905f77f5e5d16316b5dfb425e68cb326dcd55a860e90a7707031e`);
     }
 
     // 5. 添加反调试代码
