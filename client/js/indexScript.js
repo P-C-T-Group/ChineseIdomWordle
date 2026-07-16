@@ -450,6 +450,74 @@ function hint() {
         .catch(error => console.error('Error:', error));
 }
 
+// 揭晓答案
+function revealAnswer() {
+    if (isSubmitting) return;
+    
+    if (confirm('确定要揭晓答案吗？这将直接判定本局为负喵！')) {
+        isSubmitting = true;
+        fetch(`//127.0.0.1:8000/api/games/${game_id}/reveal`, {
+            method: 'GET',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': 'Bearer test-token',
+            },
+        })
+            .then(response => response.json())
+            .then(data => {
+                if (data['status'] === 'fail') {
+                    document.getElementById('msg').innerHTML = data['message'] || '揭晓失败喵';
+                    isSubmitting = false;
+                    return;
+                }
+                
+                // 标记已输入的格子为absent状态
+                for (var i = 0; i <= 3; i++) {
+                    if (!word[i]) {
+                        var charDiv = document.getElementById(turn + '/' + i);
+                        charDiv.style.backgroundColor = colorDict['absent'];
+                        var candidateId = reverseCandidate[i];
+                        if (candidateId) {
+                            document.getElementById(candidateId).style.backgroundColor = colorDict['absent'];
+                        }
+                    }
+                }
+                
+                // 保存到历史记录
+                saveHistory({
+                    game_id: game_id,
+                    answer: data['answer'],
+                    pinyin: data['pinyin'],
+                    explanation: data['explanation'] || null,
+                    status: 'lost',
+                    rounds: data['round'],
+                    max_rounds: data['max_rounds'],
+                    mode: mode,
+                    difficulty: difficulty,
+                    timestamp: Date.now()
+                });
+                
+                document.getElementById('msg').innerHTML = '答案是: ' + data['answer'] + '(' + data['pinyin'] + ')';
+                var re = confirm("揭晓答案了喵, 答案是 " + data['answer'] + '(' + data['pinyin'] + '), 是否重启游戏喵');
+                if (re == true) {
+                    document.getElementById('msg').innerHTML = '';
+                    document.getElementById("line1").innerHTML = '';
+                    document.getElementById("line2").innerHTML = '';
+                    document.getElementById('mainGame').innerHTML = '';
+                    document.getElementById('guess').style.display = 'none';
+                    document.getElementById('startPanel').style.display = 'grid';
+                }
+                localStorage.removeItem("game_id");
+                isSubmitting = false;
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                document.getElementById('msg').innerHTML = '揭晓失败喵，请重试';
+                isSubmitting = false;
+            });
+    }
+}
+
 // ========== 历史记录功能 ==========
 const HISTORY_KEY = 'idiom_wordle_history';
 const MAX_HISTORY = 50;

@@ -381,7 +381,8 @@ body {
 }
 
 .guess .hint,
-.guess .upload {
+.guess .upload,
+.guess .reveal {
     display: flex;
     flex-direction: column;
     align-items: center;
