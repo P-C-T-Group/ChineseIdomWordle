@@ -272,7 +272,7 @@ function addWord(element) {
                 if (gameStatus == 'won') {
                     won(data['answer'], data['pinyin'], data['explanation']);
                 } else {
-                    playing(data['result']);
+                    playing(data['result'], data);
                     if (turn < max_rounds && word[0]) {
                         var wordDiv = document.getElementById(turn + '/0');
                         wordDiv.innerHTML = element.innerHTML;
@@ -321,7 +321,7 @@ function guess() {
         if (gameStatus == 'won') {
             won(data['answer'], data['pinyin'], data['explanation']);
         } else {
-            playing(data['result']);
+            playing(data['result'], data);
         }
     });
 }
@@ -365,7 +365,7 @@ function won(ans, py, explanation) {
     localStorage.removeItem("game_id");
 }
 
-function playing(result) {
+function playing(result, gameData) {
     for (var i = 0; i <= 3; i++) {
         document.getElementById(reverseCandidate[i]).style.backgroundColor = colorDict[result[i]['status']]
         document.getElementById(turn + '/' + i).style.backgroundColor = colorDict[result[i]['status']]
@@ -376,60 +376,37 @@ function playing(result) {
         reverseCandidate = {};
         turn += 1;
     } else {
-        // 获取答案以保存到历史
-        fetch(`//127.0.0.1:8000/api/games/${game_id}/reveal`, {
-            method: 'GET',
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': 'Bearer test-token',
-            },
-        })
-            .then(response => response.json())
-            .then(data => {
-                // 保存到历史记录
-                saveHistory({
-                    game_id: game_id,
-                    answer: data['answer'],
-                    pinyin: data['pinyin'],
-                    explanation: data['explanation'] || null,
-                    status: 'lost',
-                    rounds: turn + 1,
-                    max_rounds: max_rounds,
-                    mode: mode,
-                    difficulty: difficulty,
-                    timestamp: Date.now()
-                });
+        // 直接使用submitGuess返回的答案数据，不需要额外调用/reveal接口
+        // 后端在最后一回合提交猜词后已经返回了答案
+        saveHistory({
+            game_id: game_id,
+            answer: gameData['answer'],
+            pinyin: gameData['pinyin'],
+            explanation: gameData['explanation'] || null,
+            status: 'lost',
+            rounds: turn + 1,
+            max_rounds: max_rounds,
+            mode: mode,
+            difficulty: difficulty,
+            timestamp: Date.now()
+        });
 
-                document.getElementById('msg').innerHTML = '答案是: ' + data['answer'] + '(' + data['pinyin'] + ')';
-                var loseMsg = "没有猜出来喵, 答案是 " + data['answer'] + '(' + data['pinyin'] + ')';
-                if (data['explanation']) {
-                    loseMsg += "\n释义: " + data['explanation'];
-                }
-                loseMsg += "\n\n是否重启游戏喵";
-                var re = confirm(loseMsg);
-                if (re == true) {
-                    document.getElementById('msg').innerHTML = '';
-                    document.getElementById("line1").innerHTML = '';
-                    document.getElementById("line2").innerHTML = '';
-                    document.getElementById('mainGame').innerHTML = '';
-                    document.getElementById('guess').style.display = 'none';
-                    document.getElementById('startPanel').style.display = 'grid';
-                }
-                localStorage.removeItem("game_id");
-            })
-            .catch(error => {
-                console.error('Error:', error);
-                var re = confirm("没有猜出来喵, 是否重启游戏喵");
-                if (re == true) {
-                    document.getElementById('msg').innerHTML = '';
-                    document.getElementById("line1").innerHTML = '';
-                    document.getElementById("line2").innerHTML = '';
-                    document.getElementById('mainGame').innerHTML = '';
-                    document.getElementById('guess').style.display = 'none';
-                    document.getElementById('startPanel').style.display = 'grid';
-                }
-                localStorage.removeItem("game_id");
-            });
+        document.getElementById('msg').innerHTML = '答案是: ' + gameData['answer'] + '(' + gameData['pinyin'] + ')';
+        var loseMsg = "没有猜出来喵, 答案是 " + gameData['answer'] + '(' + gameData['pinyin'] + ')';
+        if (gameData['explanation']) {
+            loseMsg += "\n释义: " + gameData['explanation'];
+        }
+        loseMsg += "\n\n是否重启游戏喵";
+        var re = confirm(loseMsg);
+        if (re == true) {
+            document.getElementById('msg').innerHTML = '';
+            document.getElementById("line1").innerHTML = '';
+            document.getElementById("line2").innerHTML = '';
+            document.getElementById('mainGame').innerHTML = '';
+            document.getElementById('guess').style.display = 'none';
+            document.getElementById('startPanel').style.display = 'grid';
+        }
+        localStorage.removeItem("game_id");
     }
 }
 
