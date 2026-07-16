@@ -1,231 +1,855 @@
 @font-face {
     font-family: "85W";
     src: url("fonts/85W.ttf");
+    font-display: swap;
 }
 
 @font-face {
     font-family: "65W";
     src: url("fonts/65W.ttf");
+    font-display: swap;
 }
 
-body
-{
-    -webkit-user-select: none; /* Safari 和 Chrome */
-    -moz-user-select: none;    /* Firefox */
-    -ms-user-select: none;     /* IE/Edge 旧版 */
-    user-select: none;         /* 标准语法 */
+/* ===== 主题变量：亮色模式（默认） ===== */
+:root {
+    --primary: #1677ff;
+    /* 阿里蓝主色 */
+    --primary-hover: #4096ff;
+    --primary-active: #0958d9;
+    --bg: #ffffff;
+    --bg-secondary: #f5f7fa;
+    --card-bg: #ffffff;
+    --text: #1f1f1f;
+    --text-secondary: #666666;
+    --border: #e5e7eb;
+    --border-dark: #d9d9d9;
+
+    /* 游戏状态色 */
+    --correct: #52c41a;
+    --present: #faad14;
+    --absent: #bfbfbf;
+
+    /* 阴影 */
+    --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.06);
+    --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.08);
+
+    /* 圆角 */
+    --radius-sm: 8px;
+    --radius-md: 12px;
+
+    /* 过渡 */
+    --transition: all 0.2s ease;
 }
 
-.MenuBar
-{
-    margin: auto;
+/* ===== 主题变量：系统自动深色模式 ===== */
+@media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+        --primary: #4096ff;
+        --primary-hover: #69b1ff;
+        --primary-active: #1677ff;
+        --bg: #0f172a;
+        --bg-secondary: #1e293b;
+        --card-bg: #1e293b;
+        --text: #f1f5f9;
+        --text-secondary: #94a3b8;
+        --border: #334155;
+        --border-dark: #475569;
+
+        --correct: #4ade80;
+        --present: #facc15;
+        --absent: #475569;
+
+        --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.3);
+        --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.4);
+    }
+}
+
+/* ===== 主题变量：手动强制深色模式（优先级最高） ===== */
+[data-theme="dark"] {
+    --primary: #4096ff;
+    --primary-hover: #69b1ff;
+    --primary-active: #1677ff;
+    --bg: #0f172a;
+    --bg-secondary: #1e293b;
+    --card-bg: #1e293b;
+    --text: #f1f5f9;
+    --text-secondary: #94a3b8;
+    --border: #334155;
+    --border-dark: #475569;
+
+    --correct: #4ade80;
+    --present: #facc15;
+    --absent: #475569;
+
+    --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.3);
+    --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.4);
+}
+
+/* ===== 主题图标切换 ===== */
+/* ===== 主题图标切换 ===== */
+/* 默认亮色模式：显示月亮图标，隐藏太阳 */
+.sun-icon {
+    display: none;
+}
+
+.moon-icon {
+    display: block;
+}
+
+/* 手动深色模式：显示太阳图标，隐藏月亮 */
+[data-theme="dark"] .sun-icon {
+    display: block;
+}
+
+[data-theme="dark"] .moon-icon {
+    display: none;
+}
+
+/* 系统自动深色模式（未手动设置时）：显示太阳图标，隐藏月亮 */
+@media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) .sun-icon {
+        display: block;
+    }
+
+    :root:not([data-theme="light"]) .moon-icon {
+        display: none;
+    }
+}
+
+/* ===== 全局重置 ===== */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    background-color: var(--bg);
+    color: var(--text);
+    font-family: "65W", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "PingFang SC", "Microsoft YaHei", sans-serif;
+    -webkit-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+    user-select: none;
+    transition: var(--transition);
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+}
+
+/* ===== 导航栏 ===== */
+.MenuBar {
+    margin: 0 auto;
     width: 90%;
-    border-bottom: 2px solid darkgray;
+    max-width: 900px;
+    padding: 1rem 0;
+    border-bottom: 2px solid var(--border);
     display: grid;
     grid-template-columns: 1fr 3fr 1fr;
     justify-items: center;
     align-items: center;
     letter-spacing: 0.2em;
-    z-index: 1;
 }
 
-.MenuBar .icon
-{
-    height: 2.5em;
+.MenuBar .icon {
+    height: 2.2em;
+    width: 2.2em;
+    stroke: var(--text-secondary);
+    transition: var(--transition);
 }
 
-.MenuBar .button
-{
+.MenuBar .button {
     background-color: transparent;
-    border-width: 0;
+    border: none;
     cursor: pointer;
     padding: 0.5rem;
+    border-radius: var(--radius-sm);
+    transition: var(--transition);
+    display: flex;
+    align-items: center;
+    justify-content: center;
 }
 
+.MenuBar .button:hover .icon {
+    stroke: var(--primary);
+}
 
-.MenuBar .title
-{
+.MenuBar .button:active {
+    transform: scale(0.95);
+    background-color: var(--bg-secondary);
+}
+
+.MenuBar .title {
     text-align: center;
-    font-size: 2.5em;
+    font-size: 2.2em;
     font-family: "85W", sans-serif;
+    color: var(--primary);
 }
 
-.MenuBar .leftMenu
-{
+.MenuBar .leftMenu {
     justify-self: start;
-}
-
-.MenuBar .rightMenu
-{
-    display: grid;
-    grid-template-columns: 1fr 1fr 1fr;
-    gap: 30%;
-}
-
-.startGame
-{
-    margin: auto;
-    width: 90%;
-    max-width: 700px;
-    margin-top: 2em;
-    display: grid;
-    grid-template-columns: 1fr 3fr 1fr;
-    justify-items: start;
+    display: flex;
+    gap: 1rem;
     align-items: center;
 }
 
-.startGame .text
-{
-    text-align: center;
-    font-size: 2em;
-    font-family: "85W", sans-serif;
-    grid-column: 1 / 2;
-
+.MenuBar .rightMenu {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1.5rem;
+    justify-self: end;
 }
 
-.startGame .sl
-{
-    text-align: center;
+/* ===== 开始游戏界面 ===== */
+.startGame {
+    margin: 2rem auto;
+    width: 90%;
+    max-width: 600px;
+    display: grid;
+    grid-template-columns: 1fr 2fr;
+    row-gap: 1.5rem;
+    column-gap: 2rem;
+    align-items: center;
+    padding: 2rem;
+    background-color: var(--card-bg);
+    border-radius: var(--radius-md);
+    box-shadow: var(--shadow-md);
+}
+
+.startGame .text {
     font-size: 1.5em;
-    font-family: "65W", sans-serif;
-    grid-column: 2 / 3;
+    font-family: "85W", sans-serif;
+    color: var(--text);
+    justify-self: end;
 }
 
+.startGame .sl {
+    display: flex;
+    gap: 1.5rem;
+    flex-wrap: wrap;
+    font-size: 1.2em;
+    color: var(--text-secondary);
+}
 
-.startGame .button
-{
-    grid-column: 2 / 3;
+.startGame .sl label {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    cursor: pointer;
+    transition: var(--transition);
+}
+
+.startGame .sl label:hover {
+    color: var(--primary);
+}
+
+.startGame .sl input[type="radio"] {
+    accent-color: var(--primary);
+    transform: scale(1.2);
+    cursor: pointer;
+}
+
+.startGame .button-group {
+    grid-column: 1 / -1;
+    display: flex;
+    gap: 1.5rem;
+    justify-content: center;
+    margin-top: 1rem;
+}
+
+.startGame .button {
+    padding: 0.8em 2em;
+    font-size: 1.3em;
+    font-family: "65W", sans-serif;
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    transition: var(--transition);
+    border: 2px solid transparent;
+}
+
+.startGame .primary-btn {
+    background-color: var(--primary);
+    color: white;
+    border-color: var(--primary);
+}
+
+.startGame .primary-btn:hover {
+    background-color: var(--primary-hover);
+    border-color: var(--primary-hover);
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-md);
+}
+
+.startGame .primary-btn:active {
+    background-color: var(--primary-active);
+    transform: translateY(0);
+}
+
+.startGame .secondary-btn {
+    background-color: transparent;
+    color: var(--primary);
+    border-color: var(--primary);
+}
+
+.startGame .secondary-btn:hover {
+    background-color: var(--bg-secondary);
+    transform: translateY(-2px);
+}
+
+/* ===== 游戏主界面 ===== */
+.mainGame {
+    width: 90%;
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 1rem 0;
     display: flex;
     flex-direction: column;
-    justify-self: center;
-    justify-content: center;
-    align-content: center;
-    gap: 1em;
+    gap: 2rem;
+    flex: 1;
 }
 
-.startGame .button .button
-{
-    width: 7em;
-    height: 3em;
-    text-align: center;
-    font-size: 1.5em;
-    font-family: "65W", sans-serif;
-    background-color: lightgray;
-    border: 1px solid black;
-    border-radius: 8px;
-}
-
-.mainGame
-{
-    width: 90%;
-    margin: auto;
-    display: grid;
-    grid-template-rows: 4fr 1.5fr 3fr;
-}
-
-.input
-{
+/* 输入区域 - 单行自适应核心 */
+.input {
     width: 100%;
-    margin: auto;
     display: flex;
     flex-direction: row-reverse;
+    justify-content: center;
+    align-items: flex-start;
+    gap: 0.6rem;
+    flex-wrap: nowrap;
+    /* 强制所有回合同一行，不拆分成上下组 */
+    overflow-x: auto;
+    /* 极端小屏兜底，可横向滑动不破坏布局 */
+    padding: 0.5rem 0;
+    scrollbar-width: thin;
 }
 
-.input .box
-{
-    margin: auto;
+/* 滚动条美化 */
+.input::-webkit-scrollbar {
+    height: 6px;
+}
+
+.input::-webkit-scrollbar-thumb {
+    background: var(--border);
+    border-radius: 3px;
+}
+
+.input .box {
     display: flex;
-    margin-top: 2em;
-    gap: 1em;
     flex-direction: column;
+    gap: 0.6rem;
+    flex-shrink: 0;
+    /* 列结构不压缩，靠字号自适应 */
 }
 
-.input .box .boxes
-{
-    width: 1.5em;
-    height: 1.5em;
-    background-color: transparent;
-    border: 1px solid gray;
-    border-radius: 8px;
-    cursor: pointer;
+.input .box .round-number {
     text-align: center;
-    font-size: 3rem;
-    font-family: "宋体", sans-serif;
+    font-size: clamp(0.8rem, 1.2vw, 1.2rem);
+    color: var(--text-secondary);
     font-weight: bold;
-    line-height: 1.5em;
+    height: 1.2em;
+    line-height: 1.2em;
 }
 
-.guess
-{
-    margin: auto;
-    display: flex;
-    justify-content: center;
-    gap: 10em;
-    cursor: pointer;
-    padding: 0.5rem;
-}
-
-.guess label
-{
+.input .box .boxes {
+    width: 1.6em;
+    height: 1.6em;
+    background-color: var(--card-bg);
+    border: 2px solid var(--border);
+    border-radius: var(--radius-sm);
     cursor: pointer;
     text-align: center;
-    font-size: 3em;
-    font-family: "65W", sans-serif;
+    /* 字号动态适配：屏幕越宽/回合越少，字越大；反之自动缩小 */
+    font-size: clamp(1.2rem, 2.2vw, 3rem);
+    font-family: "宋体", serif;
+    font-weight: bold;
+    line-height: 1.6em;
+    transition: var(--transition);
+    color: var(--text);
 }
 
-.guess .icon
-{
-    height: 2.5em;
+.input .box .boxes:hover {
+    border-color: var(--primary);
 }
 
-.guess .button
-{
-    background-color: transparent;
-    border-width: 0;
-    cursor: pointer;
-    padding: 0.5rem;
-}
-
-
-.candidate
-{
-    position: relative;
-    left: 5%;
-    width: 90%;
-    display: grid;
-    grid-template-rows: 1fr 1fr;
-    gap: 2.5em;
-    cursor: pointer;
-}
-
-.candidate .line
-{
+/* 操作按钮区 */
+.guess {
     display: flex;
     justify-content: center;
-    gap: 3em;
+    gap: 6rem;
+    padding: 1rem 0;
 }
 
-.candidate .line .word
-{
+.guess .hint,
+.guess .upload,
+.guess .reveal {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.5rem;
+    cursor: pointer;
+}
+
+.guess label {
+    cursor: pointer;
+    text-align: center;
+    font-size: 1.2em;
+    color: var(--text-secondary);
+    transition: var(--transition);
+}
+
+.guess .icon {
+    height: 2.8em;
+    width: 2.8em;
+    stroke: var(--text-secondary);
+    transition: var(--transition);
+}
+
+.guess .button {
+    background-color: transparent;
+    border: none;
+    cursor: pointer;
+    padding: 0.8rem;
+    border-radius: 50%;
+    transition: var(--transition);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.guess .button:hover {
+    background-color: var(--bg-secondary);
+}
+
+.guess .button:hover .icon {
+    stroke: var(--primary);
+}
+
+.guess .button:hover+label {
+    color: var(--primary);
+}
+
+.guess .button:active {
+    transform: scale(0.95);
+}
+
+/* 候选字区域 */
+.candidate {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+    cursor: pointer;
+}
+
+.candidate .line {
+    display: flex;
+    justify-content: center;
+    gap: 1.2rem;
+    flex-wrap: wrap;
+}
+
+.candidate .line .word {
     width: 1.5em;
     height: 1.5em;
     line-height: 1.5em;
     text-align: center;
-    font-size: 4em;
-    font-family: "宋体", sans-serif;
-    border: 1px solid black;
-    border-radius: 8px;
-    background-color: lightgray;
-    font-weight: bold
+    font-size: 3em;
+    font-family: "宋体", serif;
+    border: 2px solid var(--border);
+    border-radius: var(--radius-sm);
+    background-color: var(--card-bg);
+    font-weight: bold;
+    color: var(--text);
+    transition: var(--transition);
+    cursor: pointer;
 }
 
-.msg
-{
-    display: flex;
-    justify-content: center;
-    margin-top: 1em;
+.candidate .line .word:hover {
+    border-color: var(--primary);
+    transform: translateY(-3px);
+    box-shadow: var(--shadow-sm);
+}
+
+.candidate .line .word:active {
+    transform: translateY(0);
+}
+
+/* 消息提示 */
+.msg {
     text-align: center;
-    font-size: 3em;
-    font-family: "宋体", sans-serif;
-    font-weight: bold
+    font-size: 1.3em;
+    font-family: "65W", sans-serif;
+    font-weight: 500;
+    color: var(--primary);
+    min-height: 1.5em;
+    padding: 0.5rem;
+    border-radius: var(--radius-sm);
+    background-color: var(--bg-secondary);
+    width: fit-content;
+    margin: 0 auto;
+    padding: 0.8rem 2rem;
+}
+
+/* ===== 底栏 ===== */
+.footer {
+    width: 90%;
+    max-width: 900px;
+    margin: 0 auto 1.5rem;
+    padding-top: 1rem;
+    border-top: 1px solid var(--border);
+    text-align: center;
+    color: var(--text-secondary);
+    font-size: 0.95em;
+    font-family: "65W", sans-serif;
+    letter-spacing: 0.1em;
+}
+
+/* ===== 游戏状态色兼容 ===== */
+[style*="background-color: green"],
+[style*="background-color: #52c41a"] {
+    background-color: var(--correct) !important;
+    color: white !important;
+    border-color: var(--correct) !important;
+}
+
+[style*="background-color: yellow"],
+[style*="background-color: #faad14"] {
+    background-color: var(--present) !important;
+    color: white !important;
+    border-color: var(--present) !important;
+}
+
+[style*="background-color: gray"],
+[style*="background-color: #bfbfbf"] {
+    background-color: var(--absent) !important;
+    color: white !important;
+    border-color: var(--absent) !important;
+}
+
+/* ===== 响应式适配 ===== */
+/* 平板端 */
+@media (max-width: 1024px) {
+    .MenuBar .title {
+        font-size: 1.8em;
+    }
+
+    .input .box .boxes {
+        font-size: clamp(1.1rem, 2vw, 2.5rem);
+    }
+
+    .candidate .line .word {
+        font-size: 2.5em;
+    }
+
+    .guess {
+        gap: 4rem;
+    }
+}
+
+/* 移动端 */
+@media (max-width: 768px) {
+    .MenuBar {
+        width: 95%;
+        padding: 0.8rem 0;
+    }
+
+    .MenuBar .title {
+        font-size: 1.4em;
+        letter-spacing: 0.1em;
+    }
+
+    .MenuBar .icon {
+        height: 1.8em;
+        width: 1.8em;
+    }
+
+    .MenuBar .rightMenu {
+        gap: 0.8rem;
+    }
+
+    .startGame {
+        grid-template-columns: 1fr;
+        text-align: center;
+        padding: 1.5rem;
+    }
+
+    .startGame .text {
+        justify-self: center;
+        font-size: 1.3em;
+    }
+
+    .startGame .sl {
+        justify-content: center;
+        font-size: 1.1em;
+    }
+
+    .startGame .button {
+        font-size: 1.1em;
+        padding: 0.7em 1.5em;
+    }
+
+    .mainGame {
+        gap: 1.5rem;
+    }
+
+    .input {
+        gap: 0.4rem;
+    }
+
+    .input .box {
+        gap: 0.4rem;
+    }
+
+    .input .box .round-number {
+        font-size: clamp(0.7rem, 2vw, 1rem);
+    }
+
+    .input .box .boxes {
+        font-size: clamp(1rem, 3.5vw, 2rem);
+    }
+
+    .guess {
+        gap: 2rem;
+    }
+
+    .guess .icon {
+        height: 2.2em;
+        width: 2.2em;
+    }
+
+    .guess label {
+        font-size: 1em;
+    }
+
+    .candidate .line {
+        gap: 0.8rem;
+    }
+
+    .candidate .line .word {
+        font-size: 2em;
+    }
+
+    .msg {
+        font-size: 1.1em;
+        padding: 0.6rem 1.2rem;
+    }
+}
+
+/* 小屏手机 */
+@media (max-width: 480px) {
+    .input .box .boxes {
+        font-size: clamp(0.9rem, 3.2vw, 1.6rem);
+    }
+
+    .candidate .line .word {
+        font-size: 1.6em;
+    }
+
+    .MenuBar .title {
+        font-size: 1.2em;
+    }
+}
+/* ===== 历史记录弹窗 ===== */
+.modal-overlay {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.5);
+    z-index: 1000;
+    justify-content: center;
+    align-items: center;
+    backdrop-filter: blur(4px);
+}
+
+.modal-overlay.active {
+    display: flex;
+}
+
+.modal-content {
+    background-color: var(--card-bg);
+    border-radius: var(--radius-md);
+    box-shadow: var(--shadow-md);
+    width: 90%;
+    max-width: 600px;
+    max-height: 80vh;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+.modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1.2rem 1.5rem;
+    border-bottom: 1px solid var(--border);
+}
+
+.modal-header h2 {
+    font-size: 1.5em;
+    font-family: "85W", sans-serif;
+    color: var(--primary);
+}
+
+.modal-header .close-btn {
+    background-color: transparent;
+    border: none;
+    cursor: pointer;
+    padding: 0.3rem;
+    border-radius: var(--radius-sm);
+    transition: var(--transition);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.modal-header .close-btn .icon {
+    height: 1.5em;
+    width: 1.5em;
+    stroke: var(--text-secondary);
+}
+
+.modal-header .close-btn:hover {
+    background-color: var(--bg-secondary);
+}
+
+.modal-header .close-btn:hover .icon {
+    stroke: var(--primary);
+}
+
+.modal-body {
+    padding: 1rem 1.5rem;
+    overflow-y: auto;
+    flex: 1;
+}
+
+.modal-body::-webkit-scrollbar {
+    width: 6px;
+}
+
+.modal-body::-webkit-scrollbar-thumb {
+    background: var(--border);
+    border-radius: 3px;
+}
+
+.modal-footer {
+    padding: 1rem 1.5rem;
+    border-top: 1px solid var(--border);
+    display: flex;
+    justify-content: flex-end;
+}
+
+.modal-footer .button {
+    padding: 0.5em 1.5em;
+    font-size: 1em;
+    font-family: "65W", sans-serif;
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    transition: var(--transition);
+    border: 2px solid var(--border-dark);
+    background-color: var(--card-bg);
+    color: var(--text);
+}
+
+.modal-footer .button:hover {
+    background-color: var(--bg-secondary);
+    border-color: var(--primary);
+    color: var(--primary);
+}
+
+/* 历史记录条目 */
+.history-item {
+    padding: 1rem;
+    margin-bottom: 0.8rem;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    transition: var(--transition);
+}
+
+.history-item:hover {
+    border-color: var(--primary);
+    box-shadow: var(--shadow-sm);
+}
+
+.history-item:last-child {
+    margin-bottom: 0;
+}
+
+.history-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0.6rem;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+}
+
+.history-answer {
+    font-size: 1.4em;
+    font-family: "宋体", serif;
+    font-weight: bold;
+    color: var(--text);
+}
+
+.history-meta {
+    display: flex;
+    gap: 0.8rem;
+    font-size: 0.9em;
+    color: var(--text-secondary);
+}
+
+.history-result {
+    font-weight: bold;
+    padding: 0.2em 0.6em;
+    border-radius: var(--radius-sm);
+    font-size: 0.85em;
+}
+
+.history-result.won {
+    background-color: var(--correct);
+    color: white;
+}
+
+.history-result.lost {
+    background-color: var(--absent);
+    color: white;
+}
+
+.history-pinyin {
+    color: var(--text-secondary);
+    font-size: 0.9em;
+    margin-bottom: 0.4rem;
+}
+
+.history-explanation {
+    color: var(--text-secondary);
+    font-size: 0.85em;
+    line-height: 1.5;
+    margin-bottom: 0.4rem;
+}
+
+.history-rounds {
+    font-size: 0.85em;
+    color: var(--text-secondary);
+}
+
+.history-empty {
+    text-align: center;
+    color: var(--text-secondary);
+    padding: 2rem;
+    font-size: 1.1em;
+}
+
+@media (max-width: 480px) {
+    .modal-header h2 {
+        font-size: 1.2em;
+    }
+
+    .history-answer {
+        font-size: 1.2em;
+    }
 }

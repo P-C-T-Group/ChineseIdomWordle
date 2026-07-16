@@ -1,0 +1,385 @@
+openapi: 3.0.1
+info:
+  title: ''
+  description: ''
+  version: 1.0.0
+paths:
+  /api/games/{game_id}/guesses:
+    post:
+      summary: 提交猜测
+      deprecated: false
+      description: 提交一次猜测
+      operationId: api_submit_guess_api_games__game_id__guesses_post
+      tags:
+        - api
+      parameters:
+        - name: game_id
+          in: path
+          description: ''
+          required: true
+          example: '{{$string.uuid}}'
+          schema:
+            type: string
+            title: Game Id
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              x-apifox-refs:
+                01KWXFFVB7KBCKF3FWEQQNBH86:
+                  $ref: '#/components/schemas/GuessRequest'
+                  x-apifox-overrides:
+                    guess: &ref_0
+                      type: string
+                      title: 猜测成语
+                      description: 必须为四字成语
+                  required:
+                    - guess
+              x-apifox-orders:
+                - 01KWXFFVB7KBCKF3FWEQQNBH86
+              properties:
+                guess: *ref_0
+              required:
+                - guess
+              x-apifox-ignore-properties:
+                - guess
+            examples: {}
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  code:
+                    type: integer
+                    title: httpCode
+                  status:
+                    type: string
+                    title: 请求状态
+                  gameId:
+                    type: string
+                    title: 游戏id
+                  gameStatus:
+                    type: string
+                    title: 游戏状态
+                  guess:
+                    type: string
+                    title: 本次猜测
+                  result:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        char:
+                          type: string
+                        status:
+                          type: string
+                      required:
+                        - char
+                        - status
+                      x-apifox-orders:
+                        - char
+                        - status
+                      x-apifox-ignore-properties: []
+                    title: 结果
+                  round:
+                    type: integer
+                    title: 轮次
+                  maxRounds:
+                    type: integer
+                    title: 最大轮数
+                  answer:
+                    type: 'null'
+                    title: 答案
+                  pinyin:
+                    type: 'null'
+                    title: 拼音
+                  explanation:
+                    type: 'null'
+                    title: 解释
+                required:
+                  - code
+                  - status
+                  - gameId
+                  - gameStatus
+                  - guess
+                  - result
+                  - round
+                  - maxRounds
+                x-apifox-orders:
+                  - code
+                  - status
+                  - gameId
+                  - gameStatus
+                  - guess
+                  - result
+                  - round
+                  - maxRounds
+                  - answer
+                  - pinyin
+                  - explanation
+                x-apifox-ignore-properties: []
+              example:
+                code: 200
+                status: success
+                game_id: 152aa89b-8474-4591-ad00-b4187e36bc25
+                game_status: playing
+                guess: 万高相能
+                result:
+                  - char: 万
+                    status: absent
+                  - char: 高
+                    status: absent
+                  - char: 相
+                    status: absent
+                  - char: 能
+                    status: present
+                round: 1
+                max_rounds: 20
+                answer: null
+                pinyin: null
+                explanation: null
+          headers: {}
+          x-apifox-name: OK
+        '400':
+          description: ''
+          content:
+            application/json:
+              schema:
+                title: ''
+                type: object
+                properties:
+                  code:
+                    type: integer
+                    title: httpCode
+                    x-apifox-mock: '{{$number.int}}'
+                  status:
+                    type: string
+                    x-apifox-mock: '{{$string.alpha}}'
+                    title: 请求状态
+                  message:
+                    type: string
+                    title: 详细信息
+                x-apifox-orders:
+                  - code
+                  - status
+                  - message
+                required:
+                  - code
+                  - status
+                x-apifox-ignore-properties: []
+              examples:
+                '3':
+                  summary: 传入数据校验失败
+                  value:
+                    code: 400
+                    status: fali
+                    message: 字"一"不在候选字中
+                '4':
+                  summary: 游戏不存在
+                  value:
+                    code: 400
+                    status: fail
+                    message: 游戏不存在
+                '5':
+                  summary: 游戏状态不符合要求
+                  value:
+                    code: 400
+                    status: fail
+                    message: 本局游戏已结束,状态不为playing
+          headers: {}
+          x-apifox-name: 请求内容未预期
+        '401':
+          description: ''
+          content:
+            application/json:
+              schema:
+                title: ''
+                type: object
+                properties:
+                  code:
+                    type: integer
+                    title: httpCode
+                    description: http标准响应代码
+                    x-apifox-mock: '{{$number.int}}'
+                  status:
+                    type: string
+                    title: 请求状态
+                    x-apifox-mock: '{{$string.alpha}}'
+                  message:
+                    type: string
+                    title: 详细信息
+                x-apifox-orders:
+                  - code
+                  - status
+                  - message
+                required:
+                  - code
+                  - status
+                x-apifox-ignore-properties: []
+              example:
+                code: 401
+                status: fail
+                message: 缺少Authorization请求头
+          headers: {}
+          x-apifox-name: 未认证
+        '403':
+          description: ''
+          content:
+            application/json:
+              schema:
+                title: ''
+                type: object
+                properties:
+                  code:
+                    type: integer
+                    title: httpCode
+                    x-apifox-mock: '{{$number.int}}'
+                  status:
+                    type: string
+                    title: 请求状态
+                    x-apifox-mock: '{{$string.alpha}}'
+                  message:
+                    type: string
+                    title: 详细信息
+                x-apifox-orders:
+                  - code
+                  - status
+                  - message
+                required:
+                  - code
+                  - status
+                x-apifox-ignore-properties: []
+              example:
+                code: 403
+                status: fail
+                message: not admin
+          headers: {}
+          x-apifox-name: 无权限
+        '405':
+          description: ''
+          content:
+            application/json:
+              schema:
+                title: ''
+                type: object
+                properties:
+                  code:
+                    type: integer
+                    title: httpCode
+                  status:
+                    type: string
+                    title: 请求状态
+                  message:
+                    type: string
+                    title: 详细信息
+                x-apifox-orders:
+                  - code
+                  - status
+                  - message
+                required:
+                  - code
+                  - status
+                x-apifox-ignore-properties: []
+              example:
+                code: 405
+                status: fail
+                message: Method Not Allowed
+          headers: {}
+          x-apifox-name: 方法不许可
+        '422':
+          description: ''
+          content:
+            application/json:
+              schema:
+                title: ''
+                type: object
+                properties:
+                  code:
+                    type: integer
+                    title: httpCode
+                  status:
+                    type: string
+                    title: 请求状态
+                  message:
+                    type: string
+                    title: 详细信息
+                x-apifox-orders:
+                  - code
+                  - status
+                  - message
+                required:
+                  - code
+                  - status
+                x-apifox-ignore-properties: []
+              example:
+                code: 422
+                status: fail
+                message: guess 参数非法：Value error, 必须输入4字成语
+          headers: {}
+          x-apifox-name: 请求体有误
+        '500':
+          description: ''
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  code:
+                    type: integer
+                    title: httpCode
+                  status:
+                    type: string
+                    title: 请求状态
+                  message:
+                    type: string
+                    title: 详细信息
+                required:
+                  - code
+                  - status
+                x-apifox-orders:
+                  - code
+                  - status
+                  - message
+                x-apifox-ignore-properties: []
+              example:
+                code: 500
+                status: fail
+                message: 服务器内部异常，请稍后重试
+          headers: {}
+          x-apifox-name: 内部错误
+      security: []
+      x-apifox-folder: api
+      x-apifox-status: released
+      x-run-in-apifox: https://app.apifox.com/web/project/8546191/apis/api-483296520-run
+components:
+  schemas:
+    GuessRequest:
+      properties:
+        guess:
+          type: string
+          title: Guess
+      type: object
+      required:
+        - guess
+      title: GuessRequest
+      x-apifox-orders:
+        - guess
+      x-apifox-ignore-properties: []
+      x-apifox-folder: ''
+  securitySchemes:
+    普通token鉴权:
+      type: bearer
+      scheme: bearer
+    管理员token验证:
+      type: bearer
+      scheme: bearer
+servers:
+  - url: http://127.0.0.1:8000
+    description: 测试环境
+security: []
+
+```
