@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta http-equiv="Access-Control-Allow-Origin" content="*">
+    <link rel="stylesheet" type="text/css" href="../css/indexStyle.css">
+    <link rel="stylesheet" type="text/css" href="../css/help.css">
+    <link rel="icon" href="../icons/256.ico" sizes="256x256">
+    <script src="../js/help.js"></script>
+    <title>成语Wordle - 使用帮助</title>
+</head>
+
+<body>
+    <!--导航栏-->
+    <div class="MenuBar">
+        <div class="leftMenu">
+            <button class="button" onclick="start()" title="主页">
+                <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                    stroke-linecap="round" stroke-linejoin="round" aria-label="主页">
+                    <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
+                    <polyline points="9 22 9 12 15 12 15 22"></polyline>
+                </svg>
+            </button>
+            <button class="button" onclick="toggleTheme()" title="切换深浅色模式">
+                <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                    stroke-linecap="round" stroke-linejoin="round" aria-label="切换主题">
+                    <g class="sun-icon">
+                        <circle cx="12" cy="12" r="5"></circle>
+                        <line x1="12" y1="1" x2="12" y2="3"></line>
+                        <line x1="12" y1="21" x2="12" y2="23"></line>
+                        <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+                        <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+                        <line x1="1" y1="12" x2="3" y2="12"></line>
+                        <line x1="21" y1="12" x2="23" y2="12"></line>
+                        <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+                        <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+                    </g>
+                    <path class="moon-icon" d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+                </svg>
+            </button>
+        </div>
+        <div class="title">成语Wordle</div>
+        <div class="rightMenu">
+            <button class="button" onclick="help()" title="帮助">
+                <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                    stroke-linecap="round" stroke-linejoin="round" aria-label="帮助">
+                    <circle cx="12" cy="12" r="10"></circle>
+                    <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"></path>
+                    <line x1="12" y1="17" x2="12.01" y2="17"></line>
+                </svg>
+            </button>
+            <button class="button" onclick="rank()" title="排行榜">
+                <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                    stroke-linecap="round" stroke-linejoin="round" aria-label="排行榜">
+                    <line x1="18" y1="20" x2="18" y2="10"></line>
+                    <line x1="12" y1="20" x2="12" y2="4"></line>
+                    <line x1="6" y1="20" x2="6" y2="14"></line>
+                </svg>
+            </button>
+            <button class="button" onclick="getHistory()" title="历史记录">
+                <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                    stroke-linecap="round" stroke-linejoin="round" aria-label="历史记录">
+                    <circle cx="12" cy="12" r="10"></circle>
+                    <polyline points="12 6 12 12 16 14"></polyline>
+                </svg>
+            </button>
+        </div>
+    </div>
+
+    <!--帮助内容主体-->
+    <div class="helpContainer">
+        <h1 class="helpTitle">使用帮助</h1>
+
+        <div class="helpSection">
+            <h2 class="sectionTitle">游戏规则</h2>
+            <div class="sectionContent">
+                <p>成语Wordle是一款猜成语的小游戏。系统会随机选择一个四字成语，你需要在有限的回合内猜出它。</p>
+                <ul class="helpList">
+                    <li>每局游戏可根据难度选择不同的回合数</li>
+                    <li>每次从候选字中选择四个字组成你的猜测</li>
+                    <li>提交后系统会通过颜色反馈每个字的状态</li>
+                    <li>在规定回合内猜出成语即为胜利</li>
+                </ul>
+            </div>
+        </div>
+
+        <div class="helpSection">
+            <h2 class="sectionTitle">颜色含义</h2>
+            <div class="sectionContent">
+                <div class="colorDemo">
+                    <div class="colorItem">
+                        <div class="colorBox" style="background-color: var(--correct); color: white; border-color: var(--correct);">一</div>
+                        <div class="colorDesc">
+                            <strong>绿色</strong>：该字存在于答案中，且位置正确
+                        </div>
+                    </div>
+                    <div class="colorItem">
+                        <div class="colorBox" style="background-color: var(--present); color: white; border-color: var(--present);">心</div>
+                        <div class="colorDesc">
+                            <strong>黄色</strong>：该字存在于答案中，但位置不正确
+                        </div>
+                    </div>
+                    <div class="colorItem">
+                        <div class="colorBox" style="background-color: var(--absent); color: white; border-color: var(--absent);">意</div>
+                        <div class="colorDesc">
+                            <strong>灰色</strong>：该字不存在于答案中
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="helpSection">
+            <h2 class="sectionTitle">游戏模式</h2>
+            <div class="sectionContent">
+                <div class="modeCard">
+                    <h3>日常挑战</h3>
+                    <p>每天有一道固定题目，所有玩家挑战相同的成语，可查看排行榜对比成绩。</p>
+                </div>
+                <div class="modeCard">
+                    <h3>无限模式</h3>
+                    <p>无限制游玩，每次开始都有新的成语等待你去猜测，适合练习和娱乐。</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="helpSection">
+            <h2 class="sectionTitle">难度说明</h2>
+            <div class="sectionContent">
+                <div class="diffCard">
+                    <div class="diffHeader easy">
+                        <h3>简单</h3>
+                        <span>最多 12 回合</span>
+                    </div>
+                    <p>候选字较少，成语较为常见，适合新手入门体验。</p>
+                </div>
+                <div class="diffCard">
+                    <div class="diffHeader medium">
+                        <h3>中等</h3>
+                        <span>最多 10 回合</span>
+                    </div>
+                    <p>候选字适中，成语难度中等，适合大部分玩家挑战。</p>
+                </div>
+                <div class="diffCard">
+                    <div class="diffHeader hard">
+                        <h3>困难</h3>
+                        <span>最多 8 回合</span>
+                    </div>
+                    <p>候选字较多，成语可能较为生僻，考验你的成语储备量。</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="helpSection">
+            <h2 class="sectionTitle">操作说明</h2>
+            <div class="sectionContent">
+                <div class="opItem">
+                    <div class="opIcon">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                            stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                            <polyline points="17 8 12 3 7 8"></polyline>
+                            <line x1="12" y1="3" x2="12" y2="15"></line>
+                        </svg>
+                    </div>
+                    <div class="opDesc">
+                        <h4>选字与提交</h4>
+                        <p>点击下方候选字即可填入输入区，填满四个字后点击「提交猜测」按钮或直接点第五个字自动提交。点击已填入的字可取消选择。</p>
+                    </div>
+                </div>
+                <div class="opItem">
+                    <div class="opIcon">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                            stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M9 18h6"></path>
+                            <path d="M10 22h4"></path>
+                            <path d="M15.09 14c.18-.98.65-1.74 1.41-2.5A4.65 4.65 0 0 0 18 8 6 6 0 0 0 6 8c0 1 .23 2.23 1.5 3.5A4.61 4.61 0 0 1 8.91 14"></path>
+                        </svg>
+                    </div>
+                    <div class="opDesc">
+                        <h4>获取提示</h4>
+                        <p>每局游戏有两次提示机会，第一次提示答案的某个字的拼音，第二次提示成语释义，帮助你更快猜出答案。</p>
+                    </div>
+                </div>
+                <div class="opItem">
+                    <div class="opIcon">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                            stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                            <circle cx="12" cy="12" r="3"></circle>
+                        </svg>
+                    </div>
+                    <div class="opDesc">
+                        <h4>揭晓答案</h4>
+                        <p>如果实在猜不出来，可以选择揭晓答案提前结束本局，本局将判定为失败。</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="helpSection">
+            <h2 class="sectionTitle">其他功能</h2>
+            <div class="sectionContent">
+                <ul class="helpList">
+                    <li><strong>继续上局</strong>：游戏进度会自动保存，下次打开可继续未完成的游戏</li>
+                    <li><strong>历史记录</strong>：点击右上角历史图标查看过往游戏记录和统计数据</li>
+                    <li><strong>深色模式</strong>：点击左上角太阳/月亮图标切换明暗主题，保护视力</li>
+                    <li><strong>多端适配</strong>：支持电脑、平板、手机等多种设备访问，界面自动适配</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    <!-- 历史记录弹窗 -->
+    <div class="modal-overlay" id="historyModal" onclick="closeHistory(event)">
+        <div class="modal-content" onclick="event.stopPropagation()">
+            <div class="modal-header">
+                <h2>历史记录</h2>
+                <button class="close-btn" onclick="closeHistory()" title="关闭">
+                    <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                        stroke-linecap="round" stroke-linejoin="round">
+                        <line x1="18" y1="6" x2="6" y2="18"></line>
+                        <line x1="6" y1="6" x2="18" y2="18"></line>
+                    </svg>
+                </button>
+            </div>
+            <div class="modal-body" id="historyList">
+                <!-- 历史记录动态填充 -->
+            </div>
+            <div class="modal-footer" id="historyStats" style="display:none">
+                <button class="button secondary-btn" onclick="clearHistory()">清空记录</button>
+            </div>
+        </div>
+    </div>
+
+    <footer class="footer">
+        <span>成语Wordle ©<a href="https://whj.zdeweb.cn" target="_blank">物化技</a> 2026 ｜ <a href="https://github.com/P-C-T-Group/ChineseIdomWordle" target="_blank">GitHub</a> ｜ <a href="https://doc.wordle.whj.zdeweb.cn" target="_blank">API文档</a></span>
+    </footer>
+</body>
+
+</html>

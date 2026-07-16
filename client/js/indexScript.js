@@ -227,7 +227,7 @@ function help() {
 
 // 跳转排行榜/日志页面
 function rank() {
-    window.location.href = 'logs';
+    window.location.href = 'top';
 }
 
 // 加词

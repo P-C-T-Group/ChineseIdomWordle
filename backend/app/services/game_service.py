@@ -11,9 +11,9 @@ from app.core.candidate import generate_candidates
 
 # 难度对应的轮次配置
 MAX_ROUNDS = {
-    Difficulty.easy: 20,
-    Difficulty.medium: 16,
-    Difficulty.hard: 12,
+    Difficulty.easy: 12,
+    Difficulty.medium: 10,
+    Difficulty.hard: 8,
 }
 
 # 难度对应的候选字池大小
