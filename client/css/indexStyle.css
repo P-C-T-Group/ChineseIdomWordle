@@ -342,6 +342,15 @@ body {
     /* 列结构不压缩，靠字号自适应 */
 }
 
+.input .box .round-number {
+    text-align: center;
+    font-size: clamp(0.8rem, 1.2vw, 1.2rem);
+    color: var(--text-secondary);
+    font-weight: bold;
+    height: 1.2em;
+    line-height: 1.2em;
+}
+
 .input .box .boxes {
     width: 1.6em;
     height: 1.6em;
@@ -591,6 +600,10 @@ body {
         gap: 0.4rem;
     }
 
+    .input .box .round-number {
+        font-size: clamp(0.7rem, 2vw, 1rem);
+    }
+
     .input .box .boxes {
         font-size: clamp(1rem, 3.5vw, 2rem);
     }
@@ -633,6 +646,209 @@ body {
     }
 
     .MenuBar .title {
+        font-size: 1.2em;
+    }
+}
+/* ===== 历史记录弹窗 ===== */
+.modal-overlay {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.5);
+    z-index: 1000;
+    justify-content: center;
+    align-items: center;
+    backdrop-filter: blur(4px);
+}
+
+.modal-overlay.active {
+    display: flex;
+}
+
+.modal-content {
+    background-color: var(--card-bg);
+    border-radius: var(--radius-md);
+    box-shadow: var(--shadow-md);
+    width: 90%;
+    max-width: 600px;
+    max-height: 80vh;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+.modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1.2rem 1.5rem;
+    border-bottom: 1px solid var(--border);
+}
+
+.modal-header h2 {
+    font-size: 1.5em;
+    font-family: "85W", sans-serif;
+    color: var(--primary);
+}
+
+.modal-header .close-btn {
+    background-color: transparent;
+    border: none;
+    cursor: pointer;
+    padding: 0.3rem;
+    border-radius: var(--radius-sm);
+    transition: var(--transition);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.modal-header .close-btn .icon {
+    height: 1.5em;
+    width: 1.5em;
+    stroke: var(--text-secondary);
+}
+
+.modal-header .close-btn:hover {
+    background-color: var(--bg-secondary);
+}
+
+.modal-header .close-btn:hover .icon {
+    stroke: var(--primary);
+}
+
+.modal-body {
+    padding: 1rem 1.5rem;
+    overflow-y: auto;
+    flex: 1;
+}
+
+.modal-body::-webkit-scrollbar {
+    width: 6px;
+}
+
+.modal-body::-webkit-scrollbar-thumb {
+    background: var(--border);
+    border-radius: 3px;
+}
+
+.modal-footer {
+    padding: 1rem 1.5rem;
+    border-top: 1px solid var(--border);
+    display: flex;
+    justify-content: flex-end;
+}
+
+.modal-footer .button {
+    padding: 0.5em 1.5em;
+    font-size: 1em;
+    font-family: "65W", sans-serif;
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    transition: var(--transition);
+    border: 2px solid var(--border-dark);
+    background-color: var(--card-bg);
+    color: var(--text);
+}
+
+.modal-footer .button:hover {
+    background-color: var(--bg-secondary);
+    border-color: var(--primary);
+    color: var(--primary);
+}
+
+/* 历史记录条目 */
+.history-item {
+    padding: 1rem;
+    margin-bottom: 0.8rem;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    transition: var(--transition);
+}
+
+.history-item:hover {
+    border-color: var(--primary);
+    box-shadow: var(--shadow-sm);
+}
+
+.history-item:last-child {
+    margin-bottom: 0;
+}
+
+.history-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0.6rem;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+}
+
+.history-answer {
+    font-size: 1.4em;
+    font-family: "宋体", serif;
+    font-weight: bold;
+    color: var(--text);
+}
+
+.history-meta {
+    display: flex;
+    gap: 0.8rem;
+    font-size: 0.9em;
+    color: var(--text-secondary);
+}
+
+.history-result {
+    font-weight: bold;
+    padding: 0.2em 0.6em;
+    border-radius: var(--radius-sm);
+    font-size: 0.85em;
+}
+
+.history-result.won {
+    background-color: var(--correct);
+    color: white;
+}
+
+.history-result.lost {
+    background-color: var(--absent);
+    color: white;
+}
+
+.history-pinyin {
+    color: var(--text-secondary);
+    font-size: 0.9em;
+    margin-bottom: 0.4rem;
+}
+
+.history-explanation {
+    color: var(--text-secondary);
+    font-size: 0.85em;
+    line-height: 1.5;
+    margin-bottom: 0.4rem;
+}
+
+.history-rounds {
+    font-size: 0.85em;
+    color: var(--text-secondary);
+}
+
+.history-empty {
+    text-align: center;
+    color: var(--text-secondary);
+    padding: 2rem;
+    font-size: 1.1em;
+}
+
+@media (max-width: 480px) {
+    .modal-header h2 {
+        font-size: 1.2em;
+    }
+
+    .history-answer {
         font-size: 1.2em;
     }
 }

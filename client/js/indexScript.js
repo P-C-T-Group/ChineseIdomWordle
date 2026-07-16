@@ -183,6 +183,7 @@ function summonBox() {
     for (var i = 0; i < max_rounds; i++) {
         mainGameDiv.innerHTML += `
             <div class="box" id=${i}>
+                <div class="round-number">${i + 1}</div>
                 <div class="boxes" id="${i}/0" onclick="delWord(this)"></div>
                 <div class="boxes" id="${i}/1" onclick="delWord(this)"></div>
                 <div class="boxes" id="${i}/2" onclick="delWord(this)"></div>
@@ -269,7 +270,7 @@ function addWord(element) {
                 if (!data) return;
                 gameStatus = data['game_status'];
                 if (gameStatus == 'won') {
-                    won(data['answer'], data['pinyin']);
+                    won(data['answer'], data['pinyin'], data['explanation']);
                 } else {
                     playing(data['result']);
                     if (turn < max_rounds && word[0]) {
@@ -318,20 +319,35 @@ function guess() {
         if (!data) return;
         gameStatus = data['game_status'];
         if (gameStatus == 'won') {
-            won(data['answer'], data['pinyin']);
+            won(data['answer'], data['pinyin'], data['explanation']);
         } else {
             playing(data['result']);
         }
     });
 }
 
-function won(ans, py) {
+function won(ans, py, explanation) {
     endMusic.play()
     for (var i = 0; i <= 3; i++) {
         document.getElementById(turn + '/' + i).style.backgroundColor = colorDict['correct']
     }
     turn += 1;
     document.getElementById('msg').innerHTML = turn + '回合猜出: ' + ans + '(' + py + ')';
+
+    // 保存到历史记录
+    saveHistory({
+        game_id: game_id,
+        answer: ans,
+        pinyin: py,
+        explanation: explanation || null,
+        status: 'won',
+        rounds: turn,
+        max_rounds: max_rounds,
+        mode: mode,
+        difficulty: difficulty,
+        timestamp: Date.now()
+    });
+
     var re = confirm(turn + '回合猜出: ' + ans + '(' + py + ')' + "了喵, 是否重启游戏喵");
     if (re == true) {
         document.getElementById('msg').innerHTML = '';
@@ -355,16 +371,55 @@ function playing(result) {
         reverseCandidate = {};
         turn += 1;
     } else {
-        var re = confirm("没有猜出来喵, 是否重启游戏喵");
-        if (re == true) {
-            document.getElementById('msg').innerHTML = '';
-            document.getElementById("line1").innerHTML = '';
-            document.getElementById("line2").innerHTML = '';
-            document.getElementById('mainGame').innerHTML = '';
-            document.getElementById('guess').style.display = 'none';
-            document.getElementById('startPanel').style.display = 'grid';
-        }
-        localStorage.removeItem("game_id");
+        // 获取答案以保存到历史
+        fetch(`//127.0.0.1:8000/api/games/${game_id}/reveal`, {
+            method: 'GET',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': 'Bearer test-token',
+            },
+        })
+            .then(response => response.json())
+            .then(data => {
+                // 保存到历史记录
+                saveHistory({
+                    game_id: game_id,
+                    answer: data['answer'],
+                    pinyin: data['pinyin'],
+                    explanation: data['explanation'] || null,
+                    status: 'lost',
+                    rounds: turn + 1,
+                    max_rounds: max_rounds,
+                    mode: mode,
+                    difficulty: difficulty,
+                    timestamp: Date.now()
+                });
+
+                document.getElementById('msg').innerHTML = '答案是: ' + data['answer'] + '(' + data['pinyin'] + ')';
+                var re = confirm("没有猜出来喵, 答案是 " + data['answer'] + '(' + data['pinyin'] + '), 是否重启游戏喵');
+                if (re == true) {
+                    document.getElementById('msg').innerHTML = '';
+                    document.getElementById("line1").innerHTML = '';
+                    document.getElementById("line2").innerHTML = '';
+                    document.getElementById('mainGame').innerHTML = '';
+                    document.getElementById('guess').style.display = 'none';
+                    document.getElementById('startPanel').style.display = 'grid';
+                }
+                localStorage.removeItem("game_id");
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                var re = confirm("没有猜出来喵, 是否重启游戏喵");
+                if (re == true) {
+                    document.getElementById('msg').innerHTML = '';
+                    document.getElementById("line1").innerHTML = '';
+                    document.getElementById("line2").innerHTML = '';
+                    document.getElementById('mainGame').innerHTML = '';
+                    document.getElementById('guess').style.display = 'none';
+                    document.getElementById('startPanel').style.display = 'grid';
+                }
+                localStorage.removeItem("game_id");
+            });
     }
 }
 
@@ -394,3 +449,114 @@ function hint() {
         })
         .catch(error => console.error('Error:', error));
 }
+
+// ========== 历史记录功能 ==========
+const HISTORY_KEY = 'idiom_wordle_history';
+const MAX_HISTORY = 50;
+
+// 保存一局游戏到历史
+function saveHistory(gameData) {
+    let history = JSON.parse(localStorage.getItem(HISTORY_KEY) || '[]');
+    history.unshift(gameData);
+    if (history.length > MAX_HISTORY) {
+        history = history.slice(0, MAX_HISTORY);
+    }
+    localStorage.setItem(HISTORY_KEY, JSON.stringify(history));
+}
+
+// 获取历史记录列表
+function getHistoryList() {
+    return JSON.parse(localStorage.getItem(HISTORY_KEY) || '[]');
+}
+
+// 清空历史记录
+function clearHistory() {
+    if (confirm('确定要清空所有历史记录吗？')) {
+        localStorage.removeItem(HISTORY_KEY);
+        renderHistory();
+    }
+}
+
+// 格式化日期
+function formatDate(timestamp) {
+    const d = new Date(timestamp);
+    const pad = n => String(n).padStart(2, '0');
+    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+
+// 获取模式中文名
+function modeName(mode) {
+    return { daily: '日常挑战', unlimited: '无限模式' }[mode] || mode;
+}
+
+// 获取难度中文名
+function difficultyName(diff) {
+    return { easy: '简单', medium: '中等', hard: '困难' }[diff] || diff;
+}
+
+// 渲染历史列表
+function renderHistory() {
+    const listEl = document.getElementById('historyList');
+    const statsEl = document.getElementById('historyStats');
+    const history = getHistoryList();
+
+    if (history.length === 0) {
+        listEl.innerHTML = '<div class="history-empty">暂无历史记录喵~<br>快来开始一局吧！</div>';
+        statsEl.style.display = 'none';
+        return;
+    }
+
+    statsEl.style.display = 'flex';
+
+    // 统计
+    const wonCount = history.filter(h => h.status === 'won').length;
+    const totalRounds = history.filter(h => h.status === 'won').reduce((sum, h) => sum + h.rounds, 0);
+    const avgRounds = wonCount > 0 ? (totalRounds / wonCount).toFixed(1) : '-';
+
+    listEl.innerHTML = `
+        <div style="margin-bottom:1rem;padding:0.8rem;background:var(--bg-secondary);border-radius:var(--radius-sm);display:flex;justify-content:space-around;flex-wrap:wrap;gap:0.5rem;text-align:center;">
+            <div><div style="font-size:1.3em;font-weight:bold;color:var(--primary);">${history.length}</div><div style="font-size:0.85em;color:var(--text-secondary);">总局数</div></div>
+            <div><div style="font-size:1.3em;font-weight:bold;color:var(--correct);">${wonCount}</div><div style="font-size:0.85em;color:var(--text-secondary);">胜利</div></div>
+            <div><div style="font-size:1.3em;font-weight:bold;color:var(--absent);">${history.length - wonCount}</div><div style="font-size:0.85em;color:var(--text-secondary);">失败</div></div>
+            <div><div style="font-size:1.3em;font-weight:bold;color:var(--present);">${avgRounds}</div><div style="font-size:0.85em;color:var(--text-secondary);">平均回合</div></div>
+        </div>
+    ` + history.map(h => `
+        <div class="history-item">
+            <div class="history-header">
+                <span class="history-answer">${h.answer}</span>
+                <span class="history-meta">
+                    <span class="history-result ${h.status}">${h.status === 'won' ? '猜对了' : '未猜出'}</span>
+                </span>
+            </div>
+            ${h.pinyin ? `<div class="history-pinyin">${h.pinyin}</div>` : ''}
+            ${h.explanation ? `<div class="history-explanation">${h.explanation}</div>` : ''}
+            <div class="history-rounds">
+                ${h.status === 'won' ? `用时 ${h.rounds} 回合猜出` : `未能猜出（${h.rounds}/${h.max_rounds} 回合）`}
+                ｜ ${modeName(h.mode)} · ${difficultyName(h.difficulty)}
+                ｜ ${formatDate(h.timestamp)}
+            </div>
+        </div>
+    `).join('');
+}
+
+// 打开历史记录
+function getHistory() {
+    renderHistory();
+    document.getElementById('historyModal').classList.add('active');
+}
+
+// 关闭历史记录
+function closeHistory(event) {
+    if (event && event.target !== event.currentTarget) return;
+    document.getElementById('historyModal').classList.remove('active');
+}
+
+// ESC 键关闭弹窗
+document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') {
+        const modal = document.getElementById('historyModal');
+        if (modal && modal.classList.contains('active')) {
+            closeHistory();
+        }
+    }
+});

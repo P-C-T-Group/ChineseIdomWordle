@@ -145,6 +145,28 @@
         <div class="msg" id="msg"></div>
     </div>
 
+    <!-- 历史记录弹窗 -->
+    <div class="modal-overlay" id="historyModal" onclick="closeHistory(event)">
+        <div class="modal-content" onclick="event.stopPropagation()">
+            <div class="modal-header">
+                <h2>历史记录</h2>
+                <button class="close-btn" onclick="closeHistory()" title="关闭">
+                    <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                        stroke-linecap="round" stroke-linejoin="round">
+                        <line x1="18" y1="6" x2="6" y2="18"></line>
+                        <line x1="6" y1="6" x2="18" y2="18"></line>
+                    </svg>
+                </button>
+            </div>
+            <div class="modal-body" id="historyList">
+                <!-- 历史记录动态填充 -->
+            </div>
+            <div class="modal-footer" id="historyStats" style="display:none">
+                <button class="button secondary-btn" onclick="clearHistory()">清空记录</button>
+            </div>
+        </div>
+    </div>
+
     <footer class="footer">
         <span>成语Wordle ©<a href="https://whj.zdeweb.cn" target="_blank">物化技</a> 2026 ｜ <a href="https://github.com/P-C-T-Group/ChineseIdomWordle" target="_blank">GitHub</a> ｜ <a href="https://doc.wordle.whj.zdeweb.cn" target="_blank">API文档</a></span>
     </footer>
