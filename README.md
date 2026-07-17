@@ -9,7 +9,7 @@
 [![License](https://img.shields.io/badge/License-MIT-blue?style=flat-square)](LICENSE)
 [![Python](https://img.shields.io/badge/Python-3.10+-3776ab?style=flat-square&logo=python)](https://www.python.org/)
 
-[物化技 P.C.T.G.](https://github.com/P-C-T-Group) 出品
+[物化技 P.C.T.G.](https://github.com/P-C-T-Group) 
 
 </div>
 
@@ -21,14 +21,14 @@ ChineseIdomWordle 是一款中文成语版 Wordle 猜词游戏。与原版 Wordl
 
 ### ✨ 核心特性
 
-- 🎯 **三档难度** — 简单（10 候选字 / 12 轮）、中等（14 候选字 / 10 轮）、困难（20 候选字 / 8 轮）
+- 🎯 **三档难度** — 简单、中等、困难
 - 📅 **每日挑战 + 无限模式** — 每日模式以日期为种子，全站当天同一题
-- 💡 **提示系统** — 每局最多 2 次提示（拼音首字 → 释义）
-- 🔓 **揭晓答案** — 可随时放弃并查看答案（判负）
+- 💡 **提示系统** — 每局均可获取提示（某个字拼音 → 成语释义）
+- 🔓 **揭晓答案** — 可放弃并查看答案（判负）
 - 📊 **本地历史记录** — 自动保存最近 50 局战绩与统计
 - 🌓 **深浅色主题** — 跟随系统 / 手动切换
 - 🔐 **Token 鉴权** — 支持全局 Bearer Token 认证，可配置关闭
-- 📡 **REST API** — 前后端分离架构，API 文档自动生成
+- 📡 **REST API** — 前后端分离架构
 
 ---
 
@@ -65,24 +65,15 @@ ChineseIdomWordle 是一款中文成语版 Wordle 猜词游戏。与原版 Wordl
 
 ### 启动后端
 
-```bash
-cd backend
-pip3 install -r requirements.txt
-mkdir -p logs
-uvicorn app.main:app --reload --port 8000
-```
-
-或使用提供的脚本：
+使用提供的脚本：
 
 ```bash
 cd backend
 bash pullUpServer.sh
 ```
 
-启动后访问：
+启动后：
 - API 根地址：`http://127.0.0.1:8000`
-- 自动生成文档（Swagger UI）：`http://127.0.0.1:8000/docs`
-- ReDoc 文档：`http://127.0.0.1:8000/redoc`
 
 ### 启动前端
 
@@ -117,8 +108,8 @@ ChineseIdomWordle/
 │   │   │   ├── feedback.py    # 猜测反馈算法（绿/黄/灰判定）
 │   │   │   └── candidate.py   # 候选字生成逻辑
 │   │   ├── schemas/           # 请求/响应 Schema
-│   │   │   ├── game.py        # 含输入校验（4字汉字验证）
-│   │   │   └── DB.py
+│   │   │   ├── game.py        # 游戏信息数据模型/字典
+│   │   │   └── DB.py          # 数据库配置模型
 │   │   ├── services/          # 业务逻辑与路由
 │   │   │   ├── game_service.py # 游戏核心逻辑
 │   │   │   └── routes.py      # API 路由定义
@@ -128,7 +119,7 @@ ChineseIdomWordle/
 │   │       └── init.sql       # SQLite 建表 SQL
 │   ├── tests/                 # 单元测试
 │   ├── logs/                  # 运行日志
-│   ├── requirements.txt
+│   ├── requirements.txt       # 依赖列表
 │   ├── uvicorn_config.json    # 日志配置
 │   ├── token-sha256.txt       # 合法 Token 摘要
 │   └── pullUpServer.sh        # 一键启动脚本
@@ -137,7 +128,7 @@ ChineseIdomWordle/
 │   ├── css/                   # 样式（含深浅色主题）
 │   ├── js/                    # 游戏逻辑
 │   │   ├── indexScript.js     # 主游戏脚本
-│   │   ├── dialog.js          # 自定义对话框组件
+│   │   ├── dialog.js          # 对话框组件
 │   │   ├── top.js             # 排行榜页脚本
 │   │   └── help.js            # 帮助页脚本
 │   ├── help/                  # 游戏帮助页
@@ -171,6 +162,7 @@ ChineseIdomWordle/
 | `GET` | `/api/games/{game_id}/reveal` | 揭晓答案（判负） |
 | `GET` | `/api/admin/reloadTokens` | 热加载 Token 摘要（Admin） |
 
+> 还有更多，请查看在线 API 文档。
 > 📄 在线 API 文档：[ChineseIdomWordle API by 物化技](https://doc.wordle.whj.zdeweb.cn)
 > （`docs/api/` 目录下的 YAML 文件仅作存档）
 
@@ -189,7 +181,7 @@ pytest tests/
 
 **物化技（P.C.T.G.）** — [@P-C-T-Group](https://github.com/P-C-T-Group)
 
-主要负责人：
+贡献者：
 - [@GZYZhy](https://github.com/GZYZhy)
 - [@mywddbks](https://github.com/mywddbks)
 
