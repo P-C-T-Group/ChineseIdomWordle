@@ -16,6 +16,8 @@ from starlette.exceptions import HTTPException as StarletteHTTPException
 # [feat #3] AUTH
 import hashlib
 from pathlib import Path
+# 数据库初始化
+from app.database.initDB import initDB
 # 日志
 import logging
 
@@ -70,6 +72,9 @@ def get_token_sha256(raw_token: str) -> str:
 
 # 启动前加载合法token哈希
 load_valid_token_hashes()
+
+# 启动前初始化数据库
+initDB()
 
 app = FastAPI(title="IdomWordle API")
 

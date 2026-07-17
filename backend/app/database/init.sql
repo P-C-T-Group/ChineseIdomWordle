@@ -1,5 +1,22 @@
-CREATE TABLE IF NOT EXISTS `games` (`game_id` varchar(64) DEFAULT "none",`create_time` timestamp NOT NULL ON UPDATE CURRENT_TIMESTAMP,`create_ip` varchar(255) DEFAULT "0.0.0.0",`mode` enum("daily", "unlimited") NOT NULL DEFAULT "unlimited",`difficulty` enum("easy", "medium", "hard") NOT NULL DEFAULT "medium",`max_rounds` tinyint(2) NOT NULL DEFAULT 16,`candidate_chars` set("1", "2", "3", "4", "5", "6", "7", "8", "9", "10","11", "12", "13", "14", "15", "16", "17", "18", "19", "20"),`target_idiom` varchar(8),`target_pinyin` varchar(32) NOT NULL,`guesses` set("1", "2", "3", "4", "5", "6", "7", "8", "9", "10","11", "12", "13", "14", "15", "16", "17", "18", "19", "20"),`game_status` enum("playing", "won", "lost") NOT NULL DEFAULT "playing",`round` tinyint(2) NOT NULL DEFAULT 0,`hints_used` tinyint(2) NOT NULL DEFAULT 0,`max_hints` varchar(255) NOT NULL DEFAULT "2",`revealed_pinyins` set("1", "2"),PRIMARY KEY (`game_id`, `target_idiom`));
-CREATE UNIQUE INDEX `GAME_ID` ON `games` (`game_id`);
-CREATE INDEX `GAME_CREATE_IP` ON `games` (`create_ip`);
-CREATE INDEX `GAME_DIFFICULTY` ON `games` (`difficulty`);
-CREATE INDEX `GAME_STATUS` ON `games` (`game_status`);
+-- SQLite 建表脚本（默认使用）
+CREATE TABLE IF NOT EXISTS games (
+    game_id            TEXT PRIMARY KEY,
+    create_time        TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    create_ip          TEXT DEFAULT '0.0.0.0',
+    mode               TEXT NOT NULL DEFAULT 'unlimited',
+    difficulty         TEXT NOT NULL DEFAULT 'medium',
+    max_rounds         INTEGER NOT NULL DEFAULT 16,
+    candidate_chars    TEXT,
+    target_idiom       TEXT,
+    target_pinyin      TEXT NOT NULL,
+    target_explanation TEXT DEFAULT '',
+    guesses            TEXT,
+    game_status        TEXT NOT NULL DEFAULT 'playing',
+    round              INTEGER NOT NULL DEFAULT 0,
+    hints_used         INTEGER NOT NULL DEFAULT 0,
+    max_hints          TEXT NOT NULL DEFAULT '2',
+    revealed_pinyins   TEXT
+);
+CREATE INDEX IF NOT EXISTS idx_games_create_ip  ON games(create_ip);
+CREATE INDEX IF NOT EXISTS idx_games_difficulty ON games(difficulty);
+CREATE INDEX IF NOT EXISTS idx_games_status     ON games(game_status);

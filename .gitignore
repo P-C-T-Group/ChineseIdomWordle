@@ -49,6 +49,11 @@ htmlcov/
 *.log
 */logs/
 
+# SQLite 数据库文件
+*.db
+*.sqlite
+*.sqlite3
+
 # nodejs
 node_modules/
 */node_modules/

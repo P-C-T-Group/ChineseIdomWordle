@@ -13,7 +13,8 @@ from app.services.game_service import (
     get_game,
     use_hint,
     load_idioms,
-    ensure_game
+    ensure_game,
+    reveal_game
 )
 
 
@@ -123,12 +124,10 @@ def api_game_reveal(game_id: str, response: Response):
     if not ensure_game(game_id):
         raise HTTPException(status_code=400, detail="游戏不存在")
 
-    game = get_game(game_id)
+    game = reveal_game(game_id)
 
-    if game.game_status != "playing":
+    if game.game_status != "lost":
         raise HTTPException(status_code=400, detail="本局游戏已结束,状态不为playing")
-
-    game.game_status = "lost"  # 判负
 
     return GameStateResponse(
         game_id=game.game_id,

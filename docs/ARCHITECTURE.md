@@ -12,12 +12,12 @@
                                          │
                                          ▼
                                   ┌──────────────┐
-                                  │  JSON 数据文件 │
-                                  │ (成语库/干扰字) │
+                                  │  数据库存储    │
+                                  │ SQLite/MySQL │
                                   └──────────────┘
 ```
 
-前端为纯静态页面（HTML/CSS/JS），后端为 FastAPI 服务，游戏数据存储在内存字典中，成语库从 JSON 文件加载。
+前端为纯静态页面（HTML/CSS/JS），后端为 FastAPI 服务，游戏数据持久化到数据库（默认 SQLite），成语库从 JSON 文件加载。
 
 ---
 
@@ -43,8 +43,9 @@ backend/
 │   │   └── routes.py           # API 路由定义（/api/games 等端点）
 │   └── database/               # 数据库相关
 │       ├── __init__.py
-│       ├── init.sql            # 数据库初始化 SQL
-│       └── initDB.py           # 数据库初始化脚本
+│       ├── db_manager.py       # 数据库管理器（SQLite/MySQL 抽象层）
+│       ├── init.sql            # SQLite 建表 SQL
+│       └── initDB.py           # 数据库初始化脚本（支持双模式）
 ├── tests/                      # 单元测试
 │   ├── __init__.py
 │   └── test_feedback.py        # 反馈算法单元测试
@@ -64,8 +65,10 @@ backend/
 | `core/feedback.py` | `evaluate_guess()` — 对比猜测与目标成语，输出每字的 correct/present/absent 状态 |
 | `core/candidate.py` | `generate_candidates()` — 根据难度从干扰字池抽取候选字，与目标字合并打乱 |
 | `schemas/game.py` | API 层 Pydantic Schema，含输入校验（`GuessRequest` 验证 4 字汉字） |
-| `services/game_service.py` | 游戏状态机：`create_game()`、`submit_guess()`、`get_game()`、`use_hint()`、`ensure_game()`；内存存储 `games: dict[str, Game]` |
+| `services/game_service.py` | 游戏状态机：`create_game()`、`submit_guess()`、`get_game()`、`use_hint()`、`reveal_game()`、`ensure_game()`；通过 `db_manager` 持久化到数据库 |
 | `services/routes.py` | REST 端点定义，将 HTTP 请求映射到 service 层函数 |
+| `database/db_manager.py` | 数据库管理器：抽象 SQLite/MySQL 差异，提供 `save_game()`、`load_game()`、`game_exists()` 统一接口 |
+| `database/initDB.py` | 数据库初始化：根据配置创建表结构和索引 |
 
 ---
 
@@ -113,11 +116,30 @@ client/
 
 ## 数据模型
 
-### 内存存储
+### 数据持久化
 
-游戏数据存储在全局字典 `games: dict[str, Game]` 中，服务重启后丢失。
+游戏数据通过 `app/database/db_manager.py` 持久化到数据库，默认使用 SQLite（`data/wordle.db`），可通过环境变量 `DB_TYPE=mysql` 切换为 MySQL。服务重启后游戏数据不丢失。
 
-> **TODO**: 数据持久化。准备引入 MySQL。
+#### 数据库表结构（`games` 表）
+
+| 字段 | SQLite 类型 | MySQL 类型 | 说明 |
+|------|------------|------------|------|
+| `game_id` | TEXT PRIMARY KEY | varchar(64) PK | UUID 唯一标识 |
+| `create_time` | TIMESTAMP | timestamp | 创建时间（自动） |
+| `create_ip` | TEXT | varchar(255) | 创建者 IP |
+| `mode` | TEXT | enum | daily / unlimited |
+| `difficulty` | TEXT | enum | easy / medium / hard |
+| `max_rounds` | INTEGER | tinyint | 最大轮次 |
+| `candidate_chars` | TEXT | text | 候选字（JSON 数组） |
+| `target_idiom` | TEXT | varchar(8) | 目标成语 |
+| `target_pinyin` | TEXT | varchar(32) | 目标拼音 |
+| `target_explanation` | TEXT | text | 目标释义 |
+| `guesses` | TEXT | longtext | 历史猜测（JSON） |
+| `game_status` | TEXT | enum | playing / won / lost |
+| `round` | INTEGER | tinyint | 当前轮次 |
+| `hints_used` | INTEGER | tinyint | 已用提示数 |
+| `max_hints` | TEXT | varchar(255) | 最大提示数 |
+| `revealed_pinyins` | TEXT | text | 已揭示拼音（JSON 数组） |
 
 ### 核心模型
 

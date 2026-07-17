@@ -51,7 +51,7 @@ ChineseIdomWordle 是一款中文成语版 Wordle 猜词游戏。与原版 Wordl
 |------|------|
 | **后端** | Python 3.10+ · FastAPI · Pydantic v2 · Uvicorn |
 | **前端** | Vanilla JavaScript · HTML5 · CSS3（CSS 变量主题） |
-| **数据** | JSON 成语库（按难度分级）· 内存存储 |
+| **数据** | JSON 成语库（按难度分级）· SQLite（默认）/ MySQL |
 | **鉴权** | SHA-256 Token 摘要校验 |
 
 ---
@@ -122,7 +122,10 @@ ChineseIdomWordle/
 │   │   ├── services/          # 业务逻辑与路由
 │   │   │   ├── game_service.py # 游戏核心逻辑
 │   │   │   └── routes.py      # API 路由定义
-│   │   └── database/          # 数据库相关（初始化脚本）
+│   │   └── database/          # 数据库相关
+│   │       ├── db_manager.py  # 数据库管理器（SQLite/MySQL 抽象层）
+│   │       ├── initDB.py      # 数据库初始化脚本
+│   │       └── init.sql       # SQLite 建表 SQL
 │   ├── tests/                 # 单元测试
 │   ├── logs/                  # 运行日志
 │   ├── requirements.txt
