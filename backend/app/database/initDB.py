@@ -49,6 +49,7 @@ def _init_sqlite():
 def _init_mysql():
     """初始化 MySQL 表结构"""
     import pymysql
+    from pymysql.err import ProgrammingError
 
     cfg = db_manager.get_config()
     conn = pymysql.connect(
@@ -61,6 +62,7 @@ def _init_mysql():
     )
     try:
         with conn.cursor() as cursor:
+            # 创建游戏表
             cursor.execute("""
                 CREATE TABLE IF NOT EXISTS `games` (
                     `game_id`            varchar(64) PRIMARY KEY,
@@ -81,15 +83,21 @@ def _init_mysql():
                     `revealed_pinyins`   text
                 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
             """)
-            cursor.execute(
-                "CREATE INDEX IF NOT EXISTS `GAME_CREATE_IP` ON `games` (`create_ip`)"
-            )
-            cursor.execute(
-                "CREATE INDEX IF NOT EXISTS `GAME_DIFFICULTY` ON `games` (`difficulty`)"
-            )
-            cursor.execute(
-                "CREATE INDEX IF NOT EXISTS `GAME_STATUS` ON `games` (`game_status`)"
-            )
+
+            # 索引列表
+            index_sqls = [
+                "CREATE INDEX `GAME_CREATE_IP` ON `games` (`create_ip`)",
+                "CREATE INDEX `GAME_DIFFICULTY` ON `games` (`difficulty`)",
+                "CREATE INDEX `GAME_STATUS` ON `games` (`game_status`)",
+            ]
+            for sql in index_sqls:
+                try:
+                    cursor.execute(sql)
+                except ProgrammingError as e:
+                    if e.args[0] == 1061:
+                        continue
+                    raise
+
         conn.commit()
         log.info("[DB] MySQL 数据库初始化成功")
     except Exception as err:

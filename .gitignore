@@ -58,3 +58,6 @@ htmlcov/
 node_modules/
 */node_modules/
 *.backup
+
+# env
+*/.env
