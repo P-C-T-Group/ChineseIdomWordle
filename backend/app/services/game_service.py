@@ -34,6 +34,7 @@ difficulty_dict: dict[str, list[Idiom]]
 # 空游戏
 NONEGAME = Game(
     game_id='none',
+    create_ip='0.0.0.0',
     mode=GameMode("daily"),
     difficulty=Difficulty("medium"),
     max_rounds=0,
@@ -106,7 +107,7 @@ def get_random_idiom(difficulty) -> Idiom:
     return random.choice(difficulty_dict[difficulty.value])
 
 
-def create_game(mode: GameMode, difficulty: Difficulty) -> Game:
+def create_game(mode: GameMode, difficulty: Difficulty, create_ip: str = "0.0.0.0") -> Game:
     # 创建新游戏
     load_idioms()
 
@@ -120,6 +121,7 @@ def create_game(mode: GameMode, difficulty: Difficulty) -> Game:
 
     game = Game(
         game_id=str(uuid.uuid4()),
+        create_ip=create_ip,
         mode=mode,
         difficulty=difficulty,
         max_rounds=MAX_ROUNDS[difficulty],

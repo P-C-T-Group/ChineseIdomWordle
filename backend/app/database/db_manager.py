@@ -104,7 +104,7 @@ def _serialize_game(game: Game) -> dict:
     return {
         "game_id": game.game_id,
         "create_time": None,  # 由数据库自动填充
-        "create_ip": "0.0.0.0",
+        "create_ip": game.create_ip,
         "mode": game.mode.value,
         "difficulty": game.difficulty.value,
         "max_rounds": game.max_rounds,
@@ -135,6 +135,7 @@ def _deserialize_game(row) -> Game:
 
     return Game(
         game_id=row["game_id"],
+        create_ip=row["create_ip"] if "create_ip" in row.keys() else "0.0.0.0",
         mode=GameMode(row["mode"]),
         difficulty=Difficulty(row["difficulty"]),
         max_rounds=row["max_rounds"],
