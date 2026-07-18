@@ -16,8 +16,8 @@ RESET='\033[0m'
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 BACKEND_DIR="$SCRIPT_DIR/../backend"
 MAIN_PY_PATH="$BACKEND_DIR/app/main.py"
-TOKEN_FILE_PATH="$BACKEND_DIR/token-sha256.txt"
 PULLUP_SCRIPT="$BACKEND_DIR/pullUpServer.sh"
+# token-sha256.txt 已弃用：玩家 Token 统一存储于数据库 tokens 表，由管理员接口管理，管理员 Token 摘要仍保留于配置或环境变量
 
 echo -e "${BLUE}========================================${RESET}"
 echo -e "${BLUE}    IdiomWordle 后端配置定制工具    ${RESET}"

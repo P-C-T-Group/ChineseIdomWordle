@@ -94,8 +94,8 @@ async function main() {
 
         // 计算并显示sha256，方便用户添加到后端
         const tokenHash = crypto.createHash('sha256').update(actualToken).digest('hex');
-        console.log(`  注意：请确保后端 token-sha256.txt 文件中已添加该token的sha256哈希值`);
-        console.log(`  该Token的SHA256值（需添加到后端合法列表）: ${tokenHash}`);
+        console.log(`  注意：后端已改为通过管理员 API 管理玩家 Token（存储于数据库 tokens 表），请通过 /api/admin/tokens 添加或查询`);
+        console.log(`  该Token的SHA256值（可用于验证或记录）: ${tokenHash}`);
     } else {
         console.log(`→ 保持默认 Token: ${defaultToken}`);
         console.log(`  对应的SHA256值: 4c5dc9b7708905f77f5e5d16316b5dfb425e68cb326dcd55a860e90a7707031e`);

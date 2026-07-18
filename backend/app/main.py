@@ -63,6 +63,41 @@ app = FastAPI(title="IdomWordle API")
 
 app.include_router(router)
 
+# 后台定期清理过期 token（自动化垃圾回收）
+# 每小时执行一次；使用 asyncio 后台任务，保证数据库中的过期 token 不会长期积累
+import asyncio
+_cleanup_task = None
+
+async def _periodic_clean_loop(interval_seconds: int = 3600):
+    """后台循环：定时调用 db_manager.clean_expired_tokens() 清理过期 token。"""
+    try:
+        while True:
+            try:
+                db_manager.clean_expired_tokens()
+            except Exception:
+                # 忽略清理错误，避免任务退出
+                pass
+            await asyncio.sleep(interval_seconds)
+    except asyncio.CancelledError:
+        return
+
+@app.on_event("startup")
+async def _start_cleanup_task():
+    global _cleanup_task
+    # 启动后台清理任务（不阻塞启动）
+    loop = asyncio.get_running_loop()
+    _cleanup_task = loop.create_task(_periodic_clean_loop())
+
+@app.on_event("shutdown")
+async def _stop_cleanup_task():
+    global _cleanup_task
+    if _cleanup_task and not _cleanup_task.done():
+        _cleanup_task.cancel()
+        try:
+            await _cleanup_task
+        except Exception:
+            pass
+
 
 @app.middleware("http")
 async def add_global_server_headers(request: Request, call_next):

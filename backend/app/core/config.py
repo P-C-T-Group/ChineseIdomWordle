@@ -46,7 +46,6 @@ _ENV_OVERRIDES = [
     ("WORDLE_AUTH_ENABLED", ("auth", "enabled"),
      lambda v: v.lower() in ("1", "true", "yes")),
     ("WORDLE_ADMIN_TOKEN_HASH", ("auth", "admin_token_hash"), str),
-    ("WORDLE_AUTH_TOKEN_FILE", ("auth", "token_file"), str),
     # 日志
     ("WORDLE_LOG_LEVEL", ("logging", "level"), str),
     ("WORDLE_LOG_DIR", ("logging", "dir"), str),

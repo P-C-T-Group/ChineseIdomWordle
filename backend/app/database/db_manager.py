@@ -342,7 +342,17 @@ def add_token(sha256hash: str, creator_ip: str = "", valid_until: Optional[str] 
 
     - whitelist_ips: 列表，将以 JSON 字符串存储；空或 None 表示不限制 IP。
     - valid_until: ISO 时间字符串（UTC）或 None 表示长期有效。
+
+    管理员 Token（配置中的摘要）禁止写入数据库以避免重复或冲突。
     """
+    # 防止管理员 token 被写入数据库（无论哪个入口）
+    try:
+        admin_hash = get_settings().auth.admin_token_hash
+    except Exception:
+        admin_hash = None
+    if admin_hash and sha256hash == admin_hash:
+        raise ValueError("管理员 Token 禁止写入数据库")
+
     cfg = get_config()
     whitelist_json = json.dumps(whitelist_ips or [], ensure_ascii=False)
     if cfg.type == DatabaseType.sqlite:
