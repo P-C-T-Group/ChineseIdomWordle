@@ -319,10 +319,10 @@ async def admin_reload_config(request: Request):
       - game.*（难度参数，每局新游戏创建时读取）
       - idiom_library.*（成语库路径；本接口会强制重新加载字库文件）
       - logging.*（日志级别 / 目录；本接口会重新配置 logging）
-      - database.*（每次新建连接时读取；切换 SQLite 路径会立即生效；
-        MySQL 参数变更也会在下次新连接使用）
+      - cleanup.*（垃圾清理策略，后台任务每次循环实时读取）
 
     不会被热更新、需重启服务才能生效的项：
+      - database.*（为维持运行稳定，热重载不改变数据库连接配置）
       - security.cors_origins（CORS 中间件在启动时实例化）
       - 服务端口 / workers 等进程级参数
 
@@ -335,24 +335,31 @@ async def admin_reload_config(request: Request):
     if auth_err is not None:
         return auth_err
 
-    # 1) 重新加载配置（会重新读取 TOML + 环境变量并做校验）
+    # 1) 保存当前数据库配置（热重载不改变数据库配置，维持运行稳定）
+    old_settings = get_settings()
+    old_database = old_settings.database
+
+    # 2) 重新加载配置（会重新读取 TOML + 环境变量并做校验）
     try:
         new_settings = reload_settings()
     except Exception as e:
         # 重载失败：保留旧配置，返回错误
         return _admin_error(500, f'配置重载失败（已保留旧配置）：{e}')
 
+    # 3) 用旧数据库配置覆盖新加载的配置，使热重载不影响数据库连接
+    new_settings.database = old_database
+
     applied: list[str] = []
     errors: list[str] = []
 
-    # 2) 重新配置日志
+    # 4) 重新配置日志
     try:
         setup_logging(new_settings)
         applied.append('logging')
     except Exception as e:
         errors.append(f'logging: {e}')
 
-    # 3) 重新加载成语库（使 idiom_library 路径 / 字库内容变更生效）
+    # 5) 重新加载成语库（使 idiom_library 路径 / 字库内容变更生效）
     idiom_count = 0
     try:
         idiom_count = reload_idioms()
@@ -360,9 +367,10 @@ async def admin_reload_config(request: Request):
     except Exception as e:
         errors.append(f'idiom_library: {e}')
 
-    # auth / security / game / database / cleanup 等模块每次调用都实时 get_settings()，
+    # auth / security / game / cleanup 等模块每次调用都实时 get_settings()，
     # Settings 单例已被 reload_settings() 更新，自动生效，无需额外操作。
-    applied.extend(['auth', 'security', 'game', 'database', 'cleanup'])
+    # database 配置已被旧值覆盖，热重载期间保持不变；修改数据库配置需重启服务。
+    applied.extend(['auth', 'security', 'game', 'cleanup'])
 
     result = {
         'code': 200,
@@ -370,7 +378,8 @@ async def admin_reload_config(request: Request):
         'applied': applied,
         'idioms_reloaded': idiom_count,
         'requires_restart': [
-            'security.cors_origins（CORS 中间件在启动时实例化，无法热更新）'
+            'database.*（为维持运行稳定，热重载不重载数据库配置，需重启生效）',
+            'security.cors_origins（CORS 中间件在启动时实例化，无法热更新）',
         ],
     }
     if errors:
