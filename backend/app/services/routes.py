@@ -1,11 +1,13 @@
 from fastapi import APIRouter, HTTPException, Response, Request
+from fastapi.responses import JSONResponse
 from app.schemas.game import (
     CreateGameRequest,
     CreateGameResponse,
     GuessRequest,
     GuessResponse,
     GameStateResponse,
-    HintResponse
+    HintResponse,
+    ErrorResponse,
 )
 from app.services.game_service import (
     create_game,
@@ -16,9 +18,18 @@ from app.services.game_service import (
     ensure_game,
     reveal_game
 )
+from app.database import db_manager
 from app.core.security import get_client_ip, is_admin_allowed
 from app.core.config import get_settings
 import hashlib
+
+
+def _admin_error(status_code: int, message: str) -> JSONResponse:
+    """统一的管理员接口错误响应格式。"""
+    return JSONResponse(
+        status_code=status_code,
+        content=ErrorResponse(code=status_code, status="fail", message=message).model_dump(),
+    )
 
 router = APIRouter(prefix="/api")
 
@@ -157,16 +168,16 @@ async def admin_add_tokens(request: Request):
     """增加接口：传入多条 token 原文及其属性，返回每条 token 的 id。"""
     # 管理员白名单 IP 校验
     if not is_admin_allowed(request):
-        return Response(status_code=403, content='来源IP无权访问管理员接口')
+        return _admin_error(403, '来源IP无权访问管理员接口')
     admin_hash = get_settings().auth.admin_token_hash
     if not admin_hash:
-        return Response(status_code=403, content='未配置管理员Token')
+        return _admin_error(403, '未配置管理员Token')
     auth_header = request.headers.get('Authorization','')
     if not auth_header.startswith('Bearer '):
-        return Response(status_code=403, content='缺少管理员Authorization')
+        return _admin_error(403, '缺少管理员Authorization')
     admin_token = auth_header.split(' ',1)[1].strip()
     if hashlib.sha256(admin_token.encode('utf-8')).hexdigest() != admin_hash:
-        return Response(status_code=403, content='管理员验证失败')
+        return _admin_error(403, '管理员验证失败')
 
     payload = await request.json()
     items = payload.get('tokens') or []
@@ -196,16 +207,16 @@ async def admin_add_tokens(request: Request):
 async def admin_list_tokens(request: Request):
     """查询接口：列出有效 token 数及其 id 与属性（不含管理员 token）。"""
     if not is_admin_allowed(request):
-        return Response(status_code=403, content='来源IP无权访问管理员接口')
+        return _admin_error(403, '来源IP无权访问管理员接口')
     admin_hash = get_settings().auth.admin_token_hash
     if not admin_hash:
-        return Response(status_code=403, content='未配置管理员Token')
+        return _admin_error(403, '未配置管理员Token')
     auth_header = request.headers.get('Authorization','')
     if not auth_header.startswith('Bearer '):
-        return Response(status_code=403, content='缺少管理员Authorization')
+        return _admin_error(403, '缺少管理员Authorization')
     admin_token = auth_header.split(' ',1)[1].strip()
     if hashlib.sha256(admin_token.encode('utf-8')).hexdigest() != admin_hash:
-        return Response(status_code=403, content='管理员验证失败')
+        return _admin_error(403, '管理员验证失败')
 
     try:
         rows = db_manager.list_tokens()
@@ -218,16 +229,16 @@ async def admin_list_tokens(request: Request):
 async def admin_delete_tokens(request: Request):
     """删除接口：允许删除指定 id 或 sha256 或 token 原文的 token。接收 JSON: {"identifiers": [..]} 或 {"identifier":".."}。"""
     if not is_admin_allowed(request):
-        return Response(status_code=403, content='来源IP无权访问管理员接口')
+        return _admin_error(403, '来源IP无权访问管理员接口')
     admin_hash = get_settings().auth.admin_token_hash
     if not admin_hash:
-        return Response(status_code=403, content='未配置管理员Token')
+        return _admin_error(403, '未配置管理员Token')
     auth_header = request.headers.get('Authorization','')
     if not auth_header.startswith('Bearer '):
-        return Response(status_code=403, content='缺少管理员Authorization')
+        return _admin_error(403, '缺少管理员Authorization')
     admin_token = auth_header.split(' ',1)[1].strip()
     if hashlib.sha256(admin_token.encode('utf-8')).hexdigest() != admin_hash:
-        return Response(status_code=403, content='管理员验证失败')
+        return _admin_error(403, '管理员验证失败')
 
     payload = await request.json()
     ids = []
