@@ -28,8 +28,10 @@ def _admin_error(status_code: int, message: str) -> JSONResponse:
     """统一的管理员接口错误响应格式。"""
     return JSONResponse(
         status_code=status_code,
-        content=ErrorResponse(code=status_code, status="fail", message=message).model_dump(),
+        content=ErrorResponse(code=status_code, status="fail",
+                              message=message).model_dump(),
     )
+
 
 router = APIRouter(prefix="/api")
 
@@ -140,6 +142,8 @@ def api_game_reveal(game_id: str, response: Response):
         raise HTTPException(status_code=400, detail="游戏不存在")
 
     game = reveal_game(game_id)
+    if game is None:
+        raise HTTPException(status_code=400, detail="游戏不存在")
 
     if game.game_status != "lost":
         raise HTTPException(status_code=400, detail="本局游戏已结束,状态不为playing")
@@ -172,10 +176,10 @@ async def admin_add_tokens(request: Request):
     admin_hash = get_settings().auth.admin_token_hash
     if not admin_hash:
         return _admin_error(403, '未配置管理员Token')
-    auth_header = request.headers.get('Authorization','')
+    auth_header = request.headers.get('Authorization', '')
     if not auth_header.startswith('Bearer '):
         return _admin_error(403, '缺少管理员Authorization')
-    admin_token = auth_header.split(' ',1)[1].strip()
+    admin_token = auth_header.split(' ', 1)[1].strip()
     if hashlib.sha256(admin_token.encode('utf-8')).hexdigest() != admin_hash:
         return _admin_error(403, '管理员验证失败')
 
@@ -196,11 +200,12 @@ async def admin_add_tokens(request: Request):
             created.append({'raw': raw, 'error': '为管理员Token，禁止写入数据库'})
             continue
         try:
-            tid = db_manager.add_token(sha, creator_ip=creator_ip, valid_until=valid_until, whitelist_ips=whitelist_ips)
+            tid = db_manager.add_token(
+                sha, creator_ip=creator_ip, valid_until=valid_until, whitelist_ips=whitelist_ips)
             created.append({'raw': raw, 'id': tid, 'sha256': sha})
         except Exception as e:
             created.append({'raw': raw, 'error': str(e)})
-    return {'code':200, 'status':'success', 'created': created}
+    return {'code': 200, 'status': 'success', 'created': created}
 
 
 @router.get('/admin/tokens')
@@ -211,10 +216,10 @@ async def admin_list_tokens(request: Request):
     admin_hash = get_settings().auth.admin_token_hash
     if not admin_hash:
         return _admin_error(403, '未配置管理员Token')
-    auth_header = request.headers.get('Authorization','')
+    auth_header = request.headers.get('Authorization', '')
     if not auth_header.startswith('Bearer '):
         return _admin_error(403, '缺少管理员Authorization')
-    admin_token = auth_header.split(' ',1)[1].strip()
+    admin_token = auth_header.split(' ', 1)[1].strip()
     if hashlib.sha256(admin_token.encode('utf-8')).hexdigest() != admin_hash:
         return _admin_error(403, '管理员验证失败')
 
@@ -222,36 +227,69 @@ async def admin_list_tokens(request: Request):
         rows = db_manager.list_tokens()
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
-    return {'code':200, 'status':'success', 'total': len(rows), 'tokens': rows}
+    return {'code': 200, 'status': 'success', 'total': len(rows), 'tokens': rows}
 
 
-@router.delete('/admin/tokens')
+@router.post('/admin/tokens/delete')
 async def admin_delete_tokens(request: Request):
-    """删除接口：允许删除指定 id 或 sha256 或 token 原文的 token。接收 JSON: {"identifiers": [..]} 或 {"identifier":".."}。"""
+    """删除接口：批量删除 token。
+
+    接收 JSON 体：
+      - {"identifiers": ["id:1", "sha:<64hex>", "<raw_token>", ...]}
+      - 或 {"identifier": "..."}  （单个）
+
+    每个 identifier 支持三种显式前缀以避免歧义：
+      - "id:<数字>"     按数据库自增 id 删除
+      - "sha:<64hex>"   按 sha256 摘要删除
+      - "raw:<原文>"    按 token 原文（内部会计算 sha256）删除
+    无前缀时：纯数字按 id；64 位十六进制按 sha；其余按原文。
+
+    返回 results 数组，每项包含：
+      - identifier: 原样传入的标识
+      - deleted:    实际删除的行数（0 表示未找到）
+      - error:      若出错则为错误信息
+    """
     if not is_admin_allowed(request):
         return _admin_error(403, '来源IP无权访问管理员接口')
     admin_hash = get_settings().auth.admin_token_hash
     if not admin_hash:
         return _admin_error(403, '未配置管理员Token')
-    auth_header = request.headers.get('Authorization','')
+    auth_header = request.headers.get('Authorization', '')
     if not auth_header.startswith('Bearer '):
         return _admin_error(403, '缺少管理员Authorization')
-    admin_token = auth_header.split(' ',1)[1].strip()
+    admin_token = auth_header.split(' ', 1)[1].strip()
     if hashlib.sha256(admin_token.encode('utf-8')).hexdigest() != admin_hash:
         return _admin_error(403, '管理员验证失败')
 
-    payload = await request.json()
+    try:
+        payload = await request.json()
+    except Exception:
+        return _admin_error(400, '请求体不是合法的 JSON')
+
     ids = []
     if isinstance(payload, dict):
         if 'identifiers' in payload and isinstance(payload['identifiers'], list):
             ids = payload['identifiers']
         elif 'identifier' in payload:
             ids = [payload['identifier']]
-    deleted = []
+        else:
+            return _admin_error(400, '缺少 identifiers 或 identifier 字段')
+    else:
+        return _admin_error(400, '请求体必须是 JSON 对象')
+
+    results = []
     for ident in ids:
+        if ident is None:
+            results.append({'identifier': ident, 'deleted': 0, 'error': '空标识'})
+            continue
+        if not isinstance(ident, (str, int)):
+            results.append({'identifier': ident, 'deleted': 0, 'error': '标识必须是字符串或数字'})
+            continue
         try:
             cnt = db_manager.delete_token(str(ident))
-            deleted.append({'identifier': ident, 'deleted': cnt})
+            results.append({'identifier': ident, 'deleted': cnt})
         except Exception as e:
-            deleted.append({'identifier': ident, 'error': str(e)})
-    return {'code':200, 'status':'success', 'results': deleted}
+            results.append({'identifier': ident, 'deleted': 0, 'error': str(e)})
+
+    total_deleted = sum(r.get('deleted', 0) for r in results)
+    return {'code': 200, 'status': 'success', 'total': total_deleted, 'results': results}

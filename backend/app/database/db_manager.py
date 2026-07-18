@@ -413,33 +413,61 @@ def update_last_call_time(token_id: int) -> None:
 
 
 def delete_token(identifier: str) -> int:
-    """删除指定 token。identifier 可以是 id（数字字符串）、sha256 摘要或原文（若原文长度非hex则按raw->sha计算）。
-    返回删除的行数。
+    """删除指定 token，返回删除的行数（0 表示未找到）。
+
+    identifier 的识别顺序（避免歧义）：
+    1. 若以 "sha:" 或 "raw:" 为前缀，分别强制按 sha256 摘要 / token 原文处理；
+    2. 若以 "id:" 为前缀，强制按数字 id 处理；
+    3. 否则若能解析为纯整数，则按 id 删除；
+    4. 否则若匹配 64 位十六进制，则按 sha256 摘要删除；
+    5. 其余情况按 token 原文计算 sha256 后删除。
     """
-    cfg = get_config()
-    # 判断是否为纯数字 id
-    try:
-        maybe_id = int(identifier)
-    except Exception:
-        maybe_id = None
-
-    # 如果看起来是 64 长度的 hex 摘要，则当作 sha
+    import hashlib
     import re
-    is_sha = bool(re.fullmatch(r"[0-9a-fA-F]{64}", identifier))
-    target_sha = identifier if is_sha else None
 
-    if not target_sha and maybe_id is None:
-        # treat as raw token -> compute sha256
-        import hashlib
-        target_sha = hashlib.sha256(identifier.encode('utf-8')).hexdigest()
+    if not isinstance(identifier, str):
+        identifier = str(identifier)
+    identifier = identifier.strip()
+    if not identifier:
+        return 0
 
+    # 显式前缀优先，避免歧义
+    if identifier.startswith("sha:"):
+        mode, value = "sha", identifier[4:].strip()
+    elif identifier.startswith("raw:"):
+        mode, value = "raw", identifier[4:].strip()
+    elif identifier.startswith("id:"):
+        mode, value = "id", identifier[3:].strip()
+    elif re.fullmatch(r"\d+", identifier):
+        mode, value = "id", identifier
+    elif re.fullmatch(r"[0-9a-fA-F]{64}", identifier):
+        mode, value = "sha", identifier
+    else:
+        mode, value = "raw", identifier
+
+    target_id = None
+    target_sha = None
+    if mode == "id":
+        try:
+            target_id = int(value)
+        except Exception:
+            return 0
+    elif mode == "sha":
+        if not re.fullmatch(r"[0-9a-fA-F]{64}", value):
+            return 0
+        target_sha = value.lower()
+    else:  # raw
+        target_sha = hashlib.sha256(value.encode("utf-8")).hexdigest()
+
+    cfg = get_config()
+    ph = _placeholder()
     deleted = 0
     if cfg.type == DatabaseType.sqlite:
         with _sqlite_lock:
             conn = _get_sqlite_conn()
             try:
-                if maybe_id is not None:
-                    cursor = conn.execute("DELETE FROM tokens WHERE id = ?", (maybe_id,))
+                if target_id is not None:
+                    cursor = conn.execute("DELETE FROM tokens WHERE id = ?", (target_id,))
                 else:
                     cursor = conn.execute("DELETE FROM tokens WHERE sha256hash = ?", (target_sha,))
                 deleted = cursor.rowcount
@@ -450,8 +478,8 @@ def delete_token(identifier: str) -> int:
         conn = _get_mysql_conn()
         try:
             with conn.cursor() as cursor:
-                if maybe_id is not None:
-                    cursor.execute("DELETE FROM tokens WHERE id = %s", (maybe_id,))
+                if target_id is not None:
+                    cursor.execute("DELETE FROM tokens WHERE id = %s", (target_id,))
                 else:
                     cursor.execute("DELETE FROM tokens WHERE sha256hash = %s", (target_sha,))
                 deleted = cursor.rowcount
