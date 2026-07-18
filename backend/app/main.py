@@ -33,10 +33,6 @@ RESET = "\033[0m"
 settings = get_settings()
 setup_logging(settings)
 
-# 管理员 Token 哈希来自统一配置
-ADMIN_TOKEN_HASH = settings.auth.admin_token_hash
-
-# 加载日志记录器
 log = logging.getLogger('uvicorn')
 
 
@@ -115,6 +111,9 @@ async def add_global_server_headers(request: Request, call_next):
 async def bearer_auth_middleware(request: Request, call_next):
     """
     全局中间件 - Token 鉴权（基于数据库实时校验）
+
+    配置项（auth.enabled、auth.admin_token_hash 等）每次请求实时读取，
+    以支持通过 /api/admin/config/reload 热更新。
     """
     current_path = request.url.path
     # 根路径（健康检查）及文档端点免 Token
@@ -125,8 +124,11 @@ async def bearer_auth_middleware(request: Request, call_next):
     if request.method == "OPTIONS":
         return await call_next(request)
 
+    # 实时读取当前配置（支持热重载）
+    current_settings = get_settings()
+
     # Token Auth 关闭则直接放行
-    if not settings.auth.enabled:
+    if not current_settings.auth.enabled:
         return await call_next(request)
 
     # 其他路径先校验 Authorization
@@ -143,8 +145,9 @@ async def bearer_auth_middleware(request: Request, call_next):
     raw_token = raw_part[1].strip()
     token_hash = get_token_sha256(raw_token)
 
-    # 管理员 Token（配置型）直接放行
-    if ADMIN_TOKEN_HASH and token_hash == ADMIN_TOKEN_HASH:
+    # 管理员 Token（配置型）直接放行——每次实时取最新哈希，支持热更新
+    admin_hash = current_settings.auth.admin_token_hash
+    if admin_hash and token_hash == admin_hash:
         return await call_next(request)
 
     # 从数据库实时校验 Token

@@ -79,6 +79,20 @@ def load_idioms():
     }
 
 
+def reload_idioms() -> int:
+    """强制清空缓存并重新加载成语库；返回加载后的成语总数（三个难度之和）。
+
+    在配置文件（idiom_library 路径）或字库内容变更后调用，使新成语库立即生效。
+    """
+    global easy_idiom_list, medium_idiom_list, hard_idiom_list, difficulty_dict
+    easy_idiom_list = []
+    medium_idiom_list = []
+    hard_idiom_list = []
+    difficulty_dict = {}
+    load_idioms()
+    return len(easy_idiom_list) + len(medium_idiom_list) + len(hard_idiom_list)
+
+
 def get_daily_idiom(difficulty: Difficulty) -> Idiom:
     global difficulty_dict
     # 根据日期生成每日挑战成语

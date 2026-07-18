@@ -15,12 +15,14 @@ from app.services.game_service import (
     get_game,
     use_hint,
     load_idioms,
+    reload_idioms,
     ensure_game,
     reveal_game
 )
 from app.database import db_manager
 from app.core.security import get_client_ip, is_admin_allowed
-from app.core.config import get_settings
+from app.core.config import get_settings, reload_settings
+from app.core.logging_setup import setup_logging
 import hashlib
 
 
@@ -293,3 +295,82 @@ async def admin_delete_tokens(request: Request):
 
     total_deleted = sum(r.get('deleted', 0) for r in results)
     return {'code': 200, 'status': 'success', 'total': total_deleted, 'results': results}
+
+
+# ----------------- 配置热重载 -----------------
+@router.get('/admin/config/reload')
+async def admin_reload_config(request: Request):
+    """热重载配置（GET 方法，便于运维直接通过 URL/curl 触发，接口幂等）：
+    重新读取 config.toml 与环境变量，并把变更应用到运行时组件。
+
+    热重载后立即生效的配置项：
+      - auth.enabled / auth.admin_token_hash（鉴权中间件每次请求实时读取）
+      - security.admin_allowlist / security.trusted_proxies
+      - game.*（难度参数，每局新游戏创建时读取）
+      - idiom_library.*（成语库路径；本接口会强制重新加载字库文件）
+      - logging.*（日志级别 / 目录；本接口会重新配置 logging）
+      - database.*（每次新建连接时读取；切换 SQLite 路径会立即生效；
+        MySQL 参数变更也会在下次新连接使用）
+
+    不会被热更新、需重启服务才能生效的项：
+      - security.cors_origins（CORS 中间件在启动时实例化）
+      - 服务端口 / workers 等进程级参数
+
+    返回体里包含：
+      - applied: 已热应用的子系统列表
+      - requires_restart: 需要重启才能生效的配置项提示
+      - idioms_reloaded: 成语库重新加载后的条目总数
+    """
+    if not is_admin_allowed(request):
+        return _admin_error(403, '来源IP无权访问管理员接口')
+    admin_hash = get_settings().auth.admin_token_hash
+    if not admin_hash:
+        return _admin_error(403, '未配置管理员Token')
+    auth_header = request.headers.get('Authorization', '')
+    if not auth_header.startswith('Bearer '):
+        return _admin_error(403, '缺少管理员Authorization')
+    admin_token = auth_header.split(' ', 1)[1].strip()
+    if hashlib.sha256(admin_token.encode('utf-8')).hexdigest() != admin_hash:
+        return _admin_error(403, '管理员验证失败')
+
+    # 1) 重新加载配置（会重新读取 TOML + 环境变量并做校验）
+    try:
+        new_settings = reload_settings()
+    except Exception as e:
+        # 重载失败：保留旧配置，返回错误
+        return _admin_error(500, f'配置重载失败（已保留旧配置）：{e}')
+
+    applied: list[str] = []
+    errors: list[str] = []
+
+    # 2) 重新配置日志
+    try:
+        setup_logging(new_settings)
+        applied.append('logging')
+    except Exception as e:
+        errors.append(f'logging: {e}')
+
+    # 3) 重新加载成语库（使 idiom_library 路径 / 字库内容变更生效）
+    idiom_count = 0
+    try:
+        idiom_count = reload_idioms()
+        applied.append('idiom_library')
+    except Exception as e:
+        errors.append(f'idiom_library: {e}')
+
+    # auth / security / game / database 等模块每次调用都实时 get_settings()，
+    # Settings 单例已被 reload_settings() 更新，自动生效，无需额外操作。
+    applied.extend(['auth', 'security', 'game', 'database'])
+
+    result = {
+        'code': 200,
+        'status': 'success',
+        'applied': applied,
+        'idioms_reloaded': idiom_count,
+        'requires_restart': [
+            'security.cors_origins（CORS 中间件在启动时实例化，无法热更新）'
+        ],
+    }
+    if errors:
+        result['warnings'] = errors
+    return result
