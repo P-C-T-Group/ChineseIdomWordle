@@ -89,7 +89,7 @@ cp config.example.toml config.toml
 | 分类 | 配置项 | 默认值 |
 |------|--------|--------|
 | **数据库** | 类型 / SQLite 路径 / MySQL 连接 | sqlite / `data/wordle.db` |
-| **鉴权** | 全局鉴权开关 / 管理员 Token 哈希 / 玩家 Token 文件 | 开启 / 空 / `token-sha256.txt` |
+| **鉴权** | 全局鉴权开关 / 管理员 Token 哈希 / 玩家 Token（存储于数据库 tokens 表） | 开启 / 空 / （见 config.toml 中 auth.admin_token_hash） |
 | **游戏设置** | 三难度的最大轮数、候选字数、最大提示数（≤5） | 见模板 |
 | **成语库** | 难中易三档成语库路径、干扰字库路径 | `data/*.json` |
 | **日志** | 级别 / 目录 / 文件名 / 轮转份数 | INFO / `logs` / `app.log` / 10 |
@@ -109,10 +109,10 @@ python3 -m http.server 3000
 
 ### Token 鉴权配置
 
-后端默认启用 Token 鉴权，合法 Token 的 SHA-256 摘要存储在 `backend/token-sha256.txt` 中（每行一个）。
+后端默认启用 Token 鉴权，玩家 Token 统一存储在数据库的 tokens 表中并实时生效；管理员 Token 摘要通过 `config.toml` 中的 `auth.admin_token_hash` 配置。
 
-- **关闭鉴权**：在 `config.toml` 中设置 `auth.enabled = false`，或清空 `token-sha256.txt` 文件内容（保留空文件），后端将自动关闭全局校验
-- **添加 Token**：计算 Token 的 SHA-256 摘要，追加到文件中，无需重启即可通过 `/api/admin/reload-token` 热加载
+- **关闭鉴权**：在 `config.toml` 中设置 `auth.enabled = false`，后端将直接放行所有请求。
+- **添加/管理 Token**：通过管理员接口 `/api/admin/tokens`（需管理员权限）进行添加、查询与删除，数据库更改实时生效。
 
 前端默认使用 `test-token` 作为 Bearer Token，对应摘要已预置在文件中。
 

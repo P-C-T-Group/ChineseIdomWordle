@@ -25,17 +25,13 @@ charset = "utf8mb4"
 
 # ─────────────────────────── 鉴权 / 管理员 ───────────────────────────
 [auth]
-# 是否开启全局 Token 鉴权；关闭后所有接口免 Token 访问
+# 是否开启全局 Token 鉴权；关闭后所有普通接口免 Token 访问
 enabled = true
 
 # 管理员 Token 的 SHA-256 摘要（hex 小写），用于 /api/admin/* 接口
 # 生成方式：echo -n "你的管理员Token" | sha256sum
 # 留空则管理员接口不可用，此处示例为test-admin
 admin_token_hash = "db09d473d4b6461b91bfa47e4fed3ef55e0234df4132ca7a827b0a69e8927cac"
-
-# 合法玩家 Token 摘要文件路径（每行一个 SHA-256）
-# 文件为空时自动关闭全局鉴权（即便 enabled=true）
-token_file = "token-sha256.txt"
 
 
 # ─────────────────────────── 游戏设置 ───────────────────────────

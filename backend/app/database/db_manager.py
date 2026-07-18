@@ -215,3 +215,246 @@ def load_game(game_id: str) -> Optional[Game]:
 def game_exists(game_id: str) -> bool:
     """判断游戏是否存在"""
     return load_game(game_id) is not None
+
+
+# ─── Token 管理 ───
+
+import json
+from datetime import datetime
+from typing import Optional, List, Dict, Any
+
+
+def _now_iso() -> str:
+    return datetime.utcnow().isoformat(sep=' ', timespec='seconds')
+
+
+def clean_expired_tokens() -> None:
+    """清理数据库中过期的 token（valid_until < now）。"""
+    cfg = get_config()
+    if cfg.type == DatabaseType.sqlite:
+        with _sqlite_lock:
+            conn = _get_sqlite_conn()
+            try:
+                conn.execute("DELETE FROM tokens WHERE valid_until IS NOT NULL AND valid_until < datetime('now')")
+                conn.commit()
+            finally:
+                conn.close()
+    else:
+        conn = _get_mysql_conn()
+        try:
+            with conn.cursor() as cursor:
+                cursor.execute("DELETE FROM tokens WHERE valid_until IS NOT NULL AND valid_until < NOW()")
+            conn.commit()
+        finally:
+            conn.close()
+
+
+def list_tokens() -> List[Dict[str, Any]]:
+    """列出数据库中所有 token 及其属性（返回字典列表）。"""
+    clean_expired_tokens()
+    cfg = get_config()
+    results: List[Dict[str, Any]] = []
+    if cfg.type == DatabaseType.sqlite:
+        with _sqlite_lock:
+            conn = _get_sqlite_conn()
+            try:
+                cursor = conn.execute("SELECT id, sha256hash, create_time, creator_ip, valid_until, whitelist_ips, last_call_time FROM tokens")
+                rows = cursor.fetchall()
+                for r in rows:
+                    results.append({
+                        "id": r[0],
+                        "sha256hash": r[1],
+                        "create_time": r[2],
+                        "creator_ip": r[3],
+                        "valid_until": r[4],
+                        "whitelist_ips": json.loads(r[5]) if r[5] else [],
+                        "last_call_time": r[6],
+                    })
+            finally:
+                conn.close()
+    else:
+        conn = _get_mysql_conn()
+        try:
+            with conn.cursor() as cursor:
+                cursor.execute("SELECT id, sha256hash, create_time, creator_ip, valid_until, whitelist_ips, last_call_time FROM tokens")
+                rows = cursor.fetchall()
+                for r in rows:
+                    results.append({
+                        "id": r['id'],
+                        "sha256hash": r['sha256hash'],
+                        "create_time": r['create_time'],
+                        "creator_ip": r.get('creator_ip', ''),
+                        "valid_until": r.get('valid_until'),
+                        "whitelist_ips": json.loads(r.get('whitelist_ips') or '[]'),
+                        "last_call_time": r.get('last_call_time'),
+                    })
+        finally:
+            conn.close()
+    return results
+
+
+def get_token_by_hash(sha256hash: str) -> Optional[Dict[str, Any]]:
+    """按 sha256 摘要查询 token（若不存在或已过期则返回 None）。返回包含全部字段的 dict。"""
+    clean_expired_tokens()
+    cfg = get_config()
+    if cfg.type == DatabaseType.sqlite:
+        with _sqlite_lock:
+            conn = _get_sqlite_conn()
+            try:
+                cursor = conn.execute("SELECT id, sha256hash, create_time, creator_ip, valid_until, whitelist_ips, last_call_time FROM tokens WHERE sha256hash = ?", (sha256hash,))
+                r = cursor.fetchone()
+                if not r:
+                    return None
+                return {
+                    "id": r[0],
+                    "sha256hash": r[1],
+                    "create_time": r[2],
+                    "creator_ip": r[3],
+                    "valid_until": r[4],
+                    "whitelist_ips": json.loads(r[5]) if r[5] else [],
+                    "last_call_time": r[6],
+                }
+            finally:
+                conn.close()
+    else:
+        conn = _get_mysql_conn()
+        try:
+            with conn.cursor() as cursor:
+                cursor.execute("SELECT id, sha256hash, create_time, creator_ip, valid_until, whitelist_ips, last_call_time FROM tokens WHERE sha256hash = %s", (sha256hash,))
+                r = cursor.fetchone()
+                if not r:
+                    return None
+                return {
+                    "id": r['id'],
+                    "sha256hash": r['sha256hash'],
+                    "create_time": r['create_time'],
+                    "creator_ip": r.get('creator_ip', ''),
+                    "valid_until": r.get('valid_until'),
+                    "whitelist_ips": json.loads(r.get('whitelist_ips') or '[]'),
+                    "last_call_time": r.get('last_call_time'),
+                }
+        finally:
+            conn.close()
+
+
+def add_token(sha256hash: str, creator_ip: str = "", valid_until: Optional[str] = None, whitelist_ips: Optional[List[str]] = None) -> int:
+    """添加或更新一个 token，返回插入/存在的 token id。
+
+    - whitelist_ips: 列表，将以 JSON 字符串存储；空或 None 表示不限制 IP。
+    - valid_until: ISO 时间字符串（UTC）或 None 表示长期有效。
+    """
+    cfg = get_config()
+    whitelist_json = json.dumps(whitelist_ips or [], ensure_ascii=False)
+    if cfg.type == DatabaseType.sqlite:
+        with _sqlite_lock:
+            conn = _get_sqlite_conn()
+            try:
+                # 尝试插入，若存在则更新字段（保持唯一性并更新属性）
+                conn.execute(
+                    "INSERT INTO tokens (sha256hash, creator_ip, valid_until, whitelist_ips) VALUES (?, ?, ?, ?) ON CONFLICT(sha256hash) DO UPDATE SET valid_until=excluded.valid_until, whitelist_ips=excluded.whitelist_ips, creator_ip=excluded.creator_ip",
+                    (sha256hash, creator_ip, valid_until, whitelist_json),
+                )
+                conn.commit()
+                # 查询 id 返回
+                cursor = conn.execute("SELECT id FROM tokens WHERE sha256hash = ?", (sha256hash,))
+                row = cursor.fetchone()
+                return row[0]
+            except Exception:
+                conn.rollback()
+                raise
+            finally:
+                conn.close()
+    else:
+        conn = _get_mysql_conn()
+        try:
+            with conn.cursor() as cursor:
+                cursor.execute(
+                    "INSERT INTO tokens (sha256hash, creator_ip, valid_until, whitelist_ips) VALUES (%s, %s, %s, %s) ON DUPLICATE KEY UPDATE valid_until=VALUES(valid_until), whitelist_ips=VALUES(whitelist_ips), creator_ip=VALUES(creator_ip)",
+                    (sha256hash, creator_ip, valid_until, whitelist_json),
+                )
+                conn.commit()
+                cursor.execute("SELECT id FROM tokens WHERE sha256hash = %s", (sha256hash,))
+                row = cursor.fetchone()
+                return row['id']
+        finally:
+            conn.close()
+
+
+def update_last_call_time(token_id: int) -> None:
+    """更新 token 的 last_call_time 为当前 UTC 时间（ISO 格式）。"""
+    cfg = get_config()
+    now = _now_iso()
+    if cfg.type == DatabaseType.sqlite:
+        with _sqlite_lock:
+            conn = _get_sqlite_conn()
+            try:
+                conn.execute("UPDATE tokens SET last_call_time = ? WHERE id = ?", (now, token_id))
+                conn.commit()
+            finally:
+                conn.close()
+    else:
+        conn = _get_mysql_conn()
+        try:
+            with conn.cursor() as cursor:
+                cursor.execute("UPDATE tokens SET last_call_time = NOW() WHERE id = %s", (token_id,))
+            conn.commit()
+        finally:
+            conn.close()
+
+
+def delete_token(identifier: str) -> int:
+    """删除指定 token。identifier 可以是 id（数字字符串）、sha256 摘要或原文（若原文长度非hex则按raw->sha计算）。
+    返回删除的行数。
+    """
+    cfg = get_config()
+    # 判断是否为纯数字 id
+    try:
+        maybe_id = int(identifier)
+    except Exception:
+        maybe_id = None
+
+    # 如果看起来是 64 长度的 hex 摘要，则当作 sha
+    import re
+    is_sha = bool(re.fullmatch(r"[0-9a-fA-F]{64}", identifier))
+    target_sha = identifier if is_sha else None
+
+    if not target_sha and maybe_id is None:
+        # treat as raw token -> compute sha256
+        import hashlib
+        target_sha = hashlib.sha256(identifier.encode('utf-8')).hexdigest()
+
+    deleted = 0
+    if cfg.type == DatabaseType.sqlite:
+        with _sqlite_lock:
+            conn = _get_sqlite_conn()
+            try:
+                if maybe_id is not None:
+                    cursor = conn.execute("DELETE FROM tokens WHERE id = ?", (maybe_id,))
+                else:
+                    cursor = conn.execute("DELETE FROM tokens WHERE sha256hash = ?", (target_sha,))
+                deleted = cursor.rowcount
+                conn.commit()
+            finally:
+                conn.close()
+    else:
+        conn = _get_mysql_conn()
+        try:
+            with conn.cursor() as cursor:
+                if maybe_id is not None:
+                    cursor.execute("DELETE FROM tokens WHERE id = %s", (maybe_id,))
+                else:
+                    cursor.execute("DELETE FROM tokens WHERE sha256hash = %s", (target_sha,))
+                deleted = cursor.rowcount
+            conn.commit()
+        finally:
+            conn.close()
+    return deleted
+
+
+# 兼容旧接口：保留名称以最小化改动
+def get_token_hashes() -> list[str]:
+    return [t['sha256hash'] for t in list_tokens()]
+
+
+def add_token_hash(sha256hash: str, creator_ip: str = "") -> None:
+    add_token(sha256hash, creator_ip)

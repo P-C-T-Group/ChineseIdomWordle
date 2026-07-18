@@ -16,8 +16,9 @@ from app.services.game_service import (
     ensure_game,
     reveal_game
 )
-from app.core.security import get_client_ip
-
+from app.core.security import get_client_ip, is_admin_allowed
+from app.core.config import get_settings
+import hashlib
 
 router = APIRouter(prefix="/api")
 
@@ -148,3 +149,98 @@ def api_game_reveal(game_id: str, response: Response):
         revealed_pinyins=game.revealed_pinyins,
         explanation=game.target_explanation
     )
+
+
+# ----------------- 管理员 Token 管理接口（仅限管理员） -----------------
+@router.post('/admin/tokens/add')
+async def admin_add_tokens(request: Request):
+    """增加接口：传入多条 token 原文及其属性，返回每条 token 的 id。"""
+    # 管理员白名单 IP 校验
+    if not is_admin_allowed(request):
+        return Response(status_code=403, content='来源IP无权访问管理员接口')
+    admin_hash = get_settings().auth.admin_token_hash
+    if not admin_hash:
+        return Response(status_code=403, content='未配置管理员Token')
+    auth_header = request.headers.get('Authorization','')
+    if not auth_header.startswith('Bearer '):
+        return Response(status_code=403, content='缺少管理员Authorization')
+    admin_token = auth_header.split(' ',1)[1].strip()
+    if hashlib.sha256(admin_token.encode('utf-8')).hexdigest() != admin_hash:
+        return Response(status_code=403, content='管理员验证失败')
+
+    payload = await request.json()
+    items = payload.get('tokens') or []
+    created = []
+    creator_ip = request.client.host if request.client else ''
+    for it in items:
+        raw = it.get('raw')
+        if not raw:
+            continue
+        valid_until = it.get('valid_until')  # 可以为 None 或 ISO 字符串
+        whitelist_ips = it.get('whitelist_ips') or []
+        sha = hashlib.sha256(raw.encode('utf-8')).hexdigest()
+        # 管理员 Token 不允许写入数据库
+        if admin_hash and sha == admin_hash:
+            # 跳过并记录为失败
+            created.append({'raw': raw, 'error': '为管理员Token，禁止写入数据库'})
+            continue
+        try:
+            tid = db_manager.add_token(sha, creator_ip=creator_ip, valid_until=valid_until, whitelist_ips=whitelist_ips)
+            created.append({'raw': raw, 'id': tid, 'sha256': sha})
+        except Exception as e:
+            created.append({'raw': raw, 'error': str(e)})
+    return {'code':200, 'status':'success', 'created': created}
+
+
+@router.get('/admin/tokens')
+async def admin_list_tokens(request: Request):
+    """查询接口：列出有效 token 数及其 id 与属性（不含管理员 token）。"""
+    if not is_admin_allowed(request):
+        return Response(status_code=403, content='来源IP无权访问管理员接口')
+    admin_hash = get_settings().auth.admin_token_hash
+    if not admin_hash:
+        return Response(status_code=403, content='未配置管理员Token')
+    auth_header = request.headers.get('Authorization','')
+    if not auth_header.startswith('Bearer '):
+        return Response(status_code=403, content='缺少管理员Authorization')
+    admin_token = auth_header.split(' ',1)[1].strip()
+    if hashlib.sha256(admin_token.encode('utf-8')).hexdigest() != admin_hash:
+        return Response(status_code=403, content='管理员验证失败')
+
+    try:
+        rows = db_manager.list_tokens()
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+    return {'code':200, 'status':'success', 'total': len(rows), 'tokens': rows}
+
+
+@router.delete('/admin/tokens')
+async def admin_delete_tokens(request: Request):
+    """删除接口：允许删除指定 id 或 sha256 或 token 原文的 token。接收 JSON: {"identifiers": [..]} 或 {"identifier":".."}。"""
+    if not is_admin_allowed(request):
+        return Response(status_code=403, content='来源IP无权访问管理员接口')
+    admin_hash = get_settings().auth.admin_token_hash
+    if not admin_hash:
+        return Response(status_code=403, content='未配置管理员Token')
+    auth_header = request.headers.get('Authorization','')
+    if not auth_header.startswith('Bearer '):
+        return Response(status_code=403, content='缺少管理员Authorization')
+    admin_token = auth_header.split(' ',1)[1].strip()
+    if hashlib.sha256(admin_token.encode('utf-8')).hexdigest() != admin_hash:
+        return Response(status_code=403, content='管理员验证失败')
+
+    payload = await request.json()
+    ids = []
+    if isinstance(payload, dict):
+        if 'identifiers' in payload and isinstance(payload['identifiers'], list):
+            ids = payload['identifiers']
+        elif 'identifier' in payload:
+            ids = [payload['identifier']]
+    deleted = []
+    for ident in ids:
+        try:
+            cnt = db_manager.delete_token(str(ident))
+            deleted.append({'identifier': ident, 'deleted': cnt})
+        except Exception as e:
+            deleted.append({'identifier': ident, 'error': str(e)})
+    return {'code':200, 'status':'success', 'results': deleted}

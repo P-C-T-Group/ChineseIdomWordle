@@ -58,19 +58,12 @@ class AuthConfig(BaseModel):
     """鉴权配置
 
     - admin_token_hash: 管理员 Token 的 SHA-256 摘要（hex），用于 /api/admin/* 接口
-    - token_file: 合法玩家 Token 摘要文件路径（每行一个 SHA-256），为空文件则关闭全局鉴权
     - enabled: 是否开启全局 Token 鉴权（False 时直接放行所有请求）
 
-    token_file 相对路径基于 backend/ 目录。
+    管理员 Token 摘要仍保存在配置中；玩家 Token 统一存储于数据库，无需文件配置。
     """
     enabled: bool = True
     admin_token_hash: str = ""
-    token_file: str = "token-sha256.txt"
-
-    @property
-    def token_file_resolved(self) -> Path:
-        """返回解析后的 token 文件绝对路径"""
-        return _resolve_to_backend(self.token_file)
 
 
 # ─── 游戏设置 ───
@@ -219,15 +212,6 @@ class Settings(BaseModel):
                 )
         log.debug("[Config] 字库文件校验通过")
 
-        # 2. 校验 token 文件（仅在鉴权开启时）
-        if self.auth.enabled:
-            token_path = self.auth.token_file_resolved
-            if not token_path.is_file():
-                raise FileNotFoundError(
-                    f"Token 摘要文件不存在：{token_path}（配置项 auth.token_file）。"
-                    f"如需关闭鉴权，请设置 auth.enabled=false。"
-                )
-            log.debug("[Config] Token 文件校验通过")
 
         # 3. 确保 SQLite 父目录存在
         if self.database.type == DatabaseType.sqlite:

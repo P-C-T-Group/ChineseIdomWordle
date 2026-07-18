@@ -17,10 +17,11 @@ from starlette.exceptions import HTTPException as StarletteHTTPException
 import hashlib
 # 数据库初始化
 from app.database.initDB import initDB
+from app.database import db_manager
 # 统一配置
 from app.core.config import get_settings
 from app.core.logging_setup import setup_logging
-from app.core.security import is_admin_allowed
+from app.core.security import is_admin_allowed, get_client_ip, _ip_in_list
 # 日志
 import logging
 
@@ -32,47 +33,11 @@ RESET = "\033[0m"
 settings = get_settings()
 setup_logging(settings)
 
-# Token 摘要文件路径与管理员 Token 哈希均来自统一配置
-# 路径已由 Settings 统一解析为绝对路径
-TOKEN_FILE_PATH = settings.auth.token_file_resolved
+# 管理员 Token 哈希来自统一配置
 ADMIN_TOKEN_HASH = settings.auth.admin_token_hash
-
-# 缓存合法哈希列表
-valid_token_hashes: set[str] = set()
-enable_auth: bool = settings.auth.enabled
 
 # 加载日志记录器
 log = logging.getLogger('uvicorn')
-
-
-def load_valid_token_hashes() -> None:
-    """
-    读取txt内所有sha256合法token摘要，存入全局集合缓存
-    文件存在但无有效内容时，自动关闭鉴权校验
-    """
-    global valid_token_hashes, enable_auth
-    valid_token_hashes.clear()
-    # 鉴权总开关关闭则直接清空并跳过文件读取
-    if not settings.auth.enabled:
-        enable_auth = False
-        log.info("[Auth] 配置已关闭全局 Token 校验")
-        return
-    # 判断文件是否存在
-    if not TOKEN_FILE_PATH.exists():
-        raise RuntimeError(
-            f"\n {RED}Token摘要文件（{TOKEN_FILE_PATH}）不存在，如需关闭Token鉴权，请在配置中设置 auth.enabled=false。 \n 请使用ctrl+c退出程序后修正配置。{RESET}"
-        )
-    with open(TOKEN_FILE_PATH, "r", encoding="utf-8") as f:
-        for line in f:
-            line = line.strip()
-            if line:  # 跳过空行
-                valid_token_hashes.add(line)
-    if len(valid_token_hashes) == 0:
-        enable_auth = False
-        log.info("[Auth] Token摘要列表无有效Token，已自动关闭全局Token校验")
-    else:
-        enable_auth = True
-        log.info(f"[Auth] 成功加载 {len(valid_token_hashes)} 条合法Token摘要")
 
 
 def get_token_sha256(raw_token: str) -> str:
@@ -82,12 +47,14 @@ def get_token_sha256(raw_token: str) -> str:
     return hashlib.sha256(raw_token.encode("utf-8")).hexdigest()
 
 
-# 启动前加载合法token哈希
-load_valid_token_hashes()
-
-# 启动前初始化数据库
+# 启动前初始化数据库并清理过期 token
 try:
     initDB()
+    # 启动时清理过期 token
+    try:
+        db_manager.clean_expired_tokens()
+    except Exception:
+        pass
 except Exception as e:
     log.critical(f"[DB] 数据库初始化失败，服务无法启动: {e}")
     raise RuntimeError(f"数据库初始化失败，请检查数据库配置与连接: {e}") from e
@@ -112,41 +79,66 @@ async def add_global_server_headers(request: Request, call_next):
 @app.middleware("http")
 async def bearer_auth_middleware(request: Request, call_next):
     """
-    全局中间件 - Bearer Token 鉴权
+    全局中间件 - Token 鉴权（基于数据库实时校验）
     """
     current_path = request.url.path
-    # 根路径（健康检查）、重载token端点、（可能的）文档端点免Token
-    if current_path in ("/", "/api/admin/reload-token", "/docs", "/redoc", "/openapi.json"):
+    # 根路径（健康检查）及文档端点免 Token
+    if current_path in ("/", "/docs", "/redoc", "/openapi.json"):
         return await call_next(request)
 
     # 放行所有 OPTIONS 跨域预检请求
     if request.method == "OPTIONS":
         return await call_next(request)
 
-    # Token Auth关闭则直接放行
-    if not enable_auth:
+    # Token Auth 关闭则直接放行
+    if not settings.auth.enabled:
         return await call_next(request)
 
-    # 其他路径先校验Token，校验失败直接拦截
+    # 其他路径先校验 Authorization
     auth_header = request.headers.get("Authorization")
     if not auth_header or not auth_header.startswith("Bearer "):
         err = ErrorResponse(code=401, status="fail",
                             message="缺少Authorization请求头")
         return JSONResponse(status_code=401, content=err.model_dump())
 
-    # Token分割
     raw_part = auth_header.split(" ", 1)
     if len(raw_part) != 2 or not raw_part[1].strip():
         err = ErrorResponse(code=401, status="fail", message="Token格式错误")
         return JSONResponse(status_code=401, content=err.model_dump())
     raw_token = raw_part[1].strip()
-
     token_hash = get_token_sha256(raw_token)
-    if token_hash not in valid_token_hashes:
-        err = ErrorResponse(code=401, status="fail", message="Token无效")
+
+    # 管理员 Token（配置型）直接放行
+    if ADMIN_TOKEN_HASH and token_hash == ADMIN_TOKEN_HASH:
+        return await call_next(request)
+
+    # 从数据库实时校验 Token
+    try:
+        token_row = db_manager.get_token_by_hash(token_hash)
+    except Exception as e:
+        log.error(f"[Auth] 查询 token 时出错: {e}")
+        err = ErrorResponse(code=500, status="fail", message="Token 查询失败")
+        return JSONResponse(status_code=500, content=err.model_dump())
+
+    if not token_row:
+        err = ErrorResponse(code=401, status="fail", message="Token无效或已过期")
         return JSONResponse(status_code=401, content=err.model_dump())
 
-    # Token合法则放行
+    # 若 token 配置了白名单 IP 列表，则校验客户端 IP
+    whitelist = token_row.get("whitelist_ips") or []
+    if whitelist:
+        client_ip = get_client_ip(request)
+        if not _ip_in_list(client_ip, whitelist):
+            err = ErrorResponse(code=403, status="fail", message="Token 不在允许的来源 IP 列表中")
+            return JSONResponse(status_code=403, content=err.model_dump())
+
+    # 更新 last_call_time（忽略错误）
+    try:
+        db_manager.update_last_call_time(token_row.get("id"))
+    except Exception:
+        pass
+
+    # Token 合法，继续处理请求
     response = await call_next(request)
     return response
 
@@ -186,28 +178,6 @@ def read_root(response: Response):
     return result
 
 
-@app.get("/api/admin/reload-token")
-def reload_token_list(request: Request):
-    """
-    管理员接口 - 重载token列表
-    """
-    # 管理员白名单 IP 校验
-    if not is_admin_allowed(request):
-        return JSONResponse(status_code=403, content=ErrorResponse(code=403, status="fail", message="来源IP无权访问管理员接口").model_dump())
-    # 未配置管理员 Token 哈希则拒绝
-    if not ADMIN_TOKEN_HASH:
-        return JSONResponse(status_code=403, content=ErrorResponse(code=403, status="fail", message="未配置管理员Token").model_dump())
-    auth_header = request.headers.get("Authorization", "")
-    if auth_header.startswith("Bearer "):
-        parts = auth_header.split(" ", 1)
-        if len(parts) != 2 or not parts[1].strip():
-            return JSONResponse(status_code=403, content=ErrorResponse(code=403, status="fail", message="管理员Token格式错误").model_dump())
-        admin_token = parts[1].strip()
-        if get_token_sha256(admin_token) == ADMIN_TOKEN_HASH:
-            load_valid_token_hashes()
-            return {"code": 200, "status": "success", "message": "重载成功", "total_valid": len(valid_token_hashes)}
-    # 无管理员权限
-    return JSONResponse(status_code=403, content=ErrorResponse(code=403, status="fail", message="无管理员操作权限").model_dump())
 
 
 @app.exception_handler(StarletteHTTPException)

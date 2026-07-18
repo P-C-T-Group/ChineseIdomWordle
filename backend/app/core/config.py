@@ -27,7 +27,8 @@ else:  # pragma: no cover
         ) from e
 
 # 默认配置文件位置：backend/config.toml（相对本文件向上两级）
-_DEFAULT_CONFIG_PATH = Path(__file__).resolve().parent.parent.parent / "config.toml"
+_DEFAULT_CONFIG_PATH = Path(__file__).resolve(
+).parent.parent.parent / "config.toml"
 
 # 环境变量覆盖项映射：(env_name, settings_path_tuple, cast_fn)
 # settings_path_tuple 用点号拆分定位到 Settings 内的字段
@@ -42,7 +43,8 @@ _ENV_OVERRIDES = [
     ("WORDLE_DB_NAME", ("database", "db"), str),
     ("WORDLE_DB_CHARSET", ("database", "charset"), str),
     # 鉴权
-    ("WORDLE_AUTH_ENABLED", ("auth", "enabled"), lambda v: v.lower() in ("1", "true", "yes")),
+    ("WORDLE_AUTH_ENABLED", ("auth", "enabled"),
+     lambda v: v.lower() in ("1", "true", "yes")),
     ("WORDLE_ADMIN_TOKEN_HASH", ("auth", "admin_token_hash"), str),
     ("WORDLE_AUTH_TOKEN_FILE", ("auth", "token_file"), str),
     # 日志

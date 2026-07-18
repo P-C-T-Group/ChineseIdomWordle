@@ -35,6 +35,18 @@ def _init_sqlite():
             CREATE INDEX IF NOT EXISTS idx_games_create_ip  ON games(create_ip);
             CREATE INDEX IF NOT EXISTS idx_games_difficulty ON games(difficulty);
             CREATE INDEX IF NOT EXISTS idx_games_status     ON games(game_status);
+
+            -- tokens 表：用于存储玩家有效 Token 及其属性
+            CREATE TABLE IF NOT EXISTS tokens (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                sha256hash TEXT UNIQUE NOT NULL,
+                create_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                creator_ip TEXT DEFAULT '',
+                valid_until TIMESTAMP NULL DEFAULT NULL,
+                whitelist_ips TEXT DEFAULT '', -- 存储为 JSON 数组或逗号分隔字符串
+                last_call_time TIMESTAMP NULL DEFAULT NULL
+            );
+            CREATE INDEX IF NOT EXISTS idx_tokens_sha ON tokens(sha256hash);
         """)
         conn.commit()
         log.info("[DB] SQLite 数据库初始化成功")
@@ -108,6 +120,27 @@ def _init_mysql():
                     if e.args[0] == 1061:
                         log.debug(f"[DB] 索引 {idx_name} 已存在（跳过）")
                         continue
+                    raise
+
+            # 创建 tokens 表用于存储玩家有效 Token 及其属性（若尚未创建）
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS `tokens` (
+                    `id` INT AUTO_INCREMENT PRIMARY KEY,
+                    `sha256hash` varchar(128) NOT NULL UNIQUE,
+                    `create_time` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                    `creator_ip` varchar(64) DEFAULT '',
+                    `valid_until` datetime NULL DEFAULT NULL,
+                    `whitelist_ips` text,
+                    `last_call_time` timestamp NULL DEFAULT NULL
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+            """)
+            try:
+                cursor.execute("CREATE INDEX `TOKENS_SHA` ON `tokens` (`sha256hash`)")
+            except (ProgrammingError, OperationalError) as e:
+                # 1061 Duplicate key name
+                if getattr(e, 'args', None) and e.args[0] == 1061:
+                    pass
+                else:
                     raise
 
         conn.commit()
