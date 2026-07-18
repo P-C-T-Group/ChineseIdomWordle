@@ -31,7 +31,6 @@ paths:
                     items:
                       type: string
                     title: 应用成功的模块
-                    nullable: true
                   idiomsReloaded:
                     type: integer
                     title: 总成语数量
@@ -40,12 +39,12 @@ paths:
                     items:
                       type: string
                     title: 需要重启冷重载的模块
-                    description: CORS只有在重启时才能更新
+                    description: |-
+                      CORS只有在重启时才能更新
+                      DB为维持稳定不允许热更新
                 required:
                   - code
                   - status
-                  - idiomsReloaded
-                  - applied
                 x-apifox-orders:
                   - code
                   - status
@@ -279,7 +278,7 @@ paths:
             use:
               id: ARgiA7smBZZHCd3d5pz16
       x-apifox-folder: admin
-      x-apifox-status: testing
+      x-apifox-status: released
       x-run-in-apifox: https://app.apifox.com/web/project/8546191/apis/api-489129495-run
 components:
   schemas: {}
