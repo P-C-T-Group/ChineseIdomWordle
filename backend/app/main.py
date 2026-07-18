@@ -49,8 +49,8 @@ try:
     # 启动时清理过期 token
     try:
         db_manager.clean_expired_tokens()
-    except Exception:
-        pass
+    except Exception as e:
+        log.warning(f"[DB] 启动时清理过期 token 失败，已跳过: {e}")
     # 启动时按配置清理一次过期对局（可通过 cleanup.run_on_startup 关闭）
     try:
         cleanup_cfg = settings.cleanup
