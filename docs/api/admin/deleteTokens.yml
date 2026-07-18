@@ -4,18 +4,39 @@ info:
   description: ''
   version: 1.0.0
 paths:
-  /api/admin/reload-token:
-    get:
-      summary: 管理员：重载
-      deprecated: true
-      description: 管理员接口 - 重载token列表
-      operationId: reload_token_list_api_admin_reload_token_get
+  /api/admin/tokens/delete:
+    post:
+      summary: 管理员：删除token
+      deprecated: false
+      description: 删除已存在token
       tags:
         - admin
       parameters: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                identifiers:
+                  type: array
+                  items:
+                    type: string
+                    description: "可以使用的识别器如下：\n- `id:<数字>`\t按自增 id（显式前缀）\n- `sha:<64位hex>`\t按 sha256 摘要（显式前缀）\n- `raw:<原文>`\t按 token 原文（会计算 sha256，显式前缀）\n- 纯数字（无前缀）\t按 id\n- 恰好 64 位十六进制（无前缀）\t按 sha256hash\n- 其他字符串\t当作原文计算 sha256"
+                    nullable: true
+                  title: 识别器
+              required:
+                - identifiers
+              x-apifox-orders:
+                - identifiers
+            example:
+              identifiers:
+                - id:1
+                - sha:abcdefghijklmnopqrstuvwxyz1234567890
+                - my-raw-token
       responses:
         '200':
-          description: Successful Response
+          description: ''
           content:
             application/json:
               schema:
@@ -27,29 +48,51 @@ paths:
                   status:
                     type: string
                     title: 请求状态
-                  message:
-                    type: string
-                    title: 详细信息
-                  total_valid:
+                  total:
                     type: integer
-                    title: token数
-                    description: 重载后的有效token数量
+                    title: 成功的条目总数
+                  results:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        identifier:
+                          type: string
+                          title: 传入的识别器
+                        deleted:
+                          type: integer
+                          title: 删除结果
+                          description: 1:成功，0:失败
+                      required:
+                        - identifier
+                        - deleted
+                      x-apifox-orders:
+                        - identifier
+                        - deleted
+                    title: 结果详细列表
                 required:
                   - code
                   - status
-                  - total_valid
+                  - total
+                  - results
                 x-apifox-orders:
                   - code
                   - status
-                  - message
-                  - total_valid
+                  - total
+                  - results
               example:
                 code: 200
                 status: success
-                message: 重载成功
-                total_valid: 4
+                total: 1
+                results:
+                  - identifier: id:1
+                    deleted: 1
+                  - identifier: sha:abcdefghijklmnopqrstuvwxyz1234567890
+                    deleted: 0
+                  - identifier: my-raw-token
+                    deleted: 0
           headers: {}
-          x-apifox-name: OK
+          x-apifox-name: 成功
         '400':
           description: ''
           content:
@@ -251,10 +294,19 @@ paths:
                 message: 服务器内部异常，请稍后重试
           headers: {}
           x-apifox-name: 内部错误
-      security: []
+      security:
+        - 管理员token验证: []
+          x-apifox:
+            required: true
+            schemeGroups:
+              - id: C14YCNb2irsmyDTB_fnWO
+                schemeIds:
+                  - 管理员token验证
+            use:
+              id: C14YCNb2irsmyDTB_fnWO
       x-apifox-folder: admin
-      x-apifox-status: deprecated
-      x-run-in-apifox: https://app.apifox.com/web/project/8546191/apis/api-483296524-run
+      x-apifox-status: testing
+      x-run-in-apifox: https://app.apifox.com/web/project/8546191/apis/api-489127593-run
 components:
   schemas: {}
   securitySchemes:

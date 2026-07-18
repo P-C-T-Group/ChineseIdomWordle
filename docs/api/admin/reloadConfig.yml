@@ -4,18 +4,17 @@ info:
   description: ''
   version: 1.0.0
 paths:
-  /api/admin/reload-token:
+  /api/admin/config/reload:
     get:
-      summary: 管理员：重载
-      deprecated: true
-      description: 管理员接口 - 重载token列表
-      operationId: reload_token_list_api_admin_reload_token_get
+      summary: 管理员：重载配置
+      deprecated: false
+      description: 热重载本地配置文件
       tags:
         - admin
       parameters: []
       responses:
         '200':
-          description: Successful Response
+          description: ''
           content:
             application/json:
               schema:
@@ -27,29 +26,46 @@ paths:
                   status:
                     type: string
                     title: 请求状态
-                  message:
-                    type: string
-                    title: 详细信息
-                  total_valid:
+                  applied:
+                    type: array
+                    items:
+                      type: string
+                    title: 应用成功的模块
+                  idiomsReloaded:
                     type: integer
-                    title: token数
-                    description: 重载后的有效token数量
+                    title: 总成语数量
+                  requiresRestart:
+                    type: array
+                    items:
+                      type: string
+                    title: 需要重启冷重载的模块
+                    description: |-
+                      CORS只有在重启时才能更新
+                      DB为维持稳定不允许热更新
                 required:
                   - code
                   - status
-                  - total_valid
                 x-apifox-orders:
                   - code
                   - status
-                  - message
-                  - total_valid
+                  - applied
+                  - idiomsReloaded
+                  - requiresRestart
               example:
                 code: 200
                 status: success
-                message: 重载成功
-                total_valid: 4
+                applied:
+                  - logging
+                  - idiom_library
+                  - auth
+                  - security
+                  - game
+                  - database
+                idioms_reloaded: 22667
+                requires_restart:
+                  - security.cors_origins（CORS 中间件在启动时实例化，无法热更新）
           headers: {}
-          x-apifox-name: OK
+          x-apifox-name: 成功
         '400':
           description: ''
           content:
@@ -251,10 +267,19 @@ paths:
                 message: 服务器内部异常，请稍后重试
           headers: {}
           x-apifox-name: 内部错误
-      security: []
+      security:
+        - 管理员token验证: []
+          x-apifox:
+            required: true
+            schemeGroups:
+              - id: ARgiA7smBZZHCd3d5pz16
+                schemeIds:
+                  - 管理员token验证
+            use:
+              id: ARgiA7smBZZHCd3d5pz16
       x-apifox-folder: admin
-      x-apifox-status: deprecated
-      x-run-in-apifox: https://app.apifox.com/web/project/8546191/apis/api-483296524-run
+      x-apifox-status: released
+      x-run-in-apifox: https://app.apifox.com/web/project/8546191/apis/api-489129495-run
 components:
   schemas: {}
   securitySchemes:

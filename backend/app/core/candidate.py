@@ -1,6 +1,7 @@
 import json
-import os
 import random
+
+from app.core.config import get_settings
 
 # 加载干扰字库
 _char_pool = None
@@ -10,9 +11,9 @@ def _load_char_pool():
     global _char_pool
     if _char_pool is not None:
         return _char_pool
-    data_path = os.path.join(os.path.dirname(
-        __file__), "..", "..", "..", "data", "character.json")
-    with open(data_path, "r", encoding="utf-8") as f:
+    # 路径已由 Settings 统一解析为绝对路径
+    p = get_settings().idiom_library.characters_resolved
+    with open(p, "r", encoding="utf-8") as f:
         raw = json.load(f)["characters"]
     # 去重
     _char_pool = {

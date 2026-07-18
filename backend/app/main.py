@@ -13,9 +13,15 @@ from fastapi.exceptions import RequestValidationError
 from app.services.routes import router
 from app.schemas.game import ErrorResponse
 from starlette.exceptions import HTTPException as StarletteHTTPException
-# [feat #3] AUTH
+# 鉴权
 import hashlib
-from pathlib import Path
+# 数据库初始化
+from app.database.initDB import initDB
+from app.database import db_manager
+# 统一配置
+from app.core.config import get_settings
+from app.core.logging_setup import setup_logging
+from app.core.security import is_admin_allowed, get_client_ip, _ip_in_list
 # 日志
 import logging
 
@@ -23,42 +29,11 @@ RED = "\033[31m"
 GREEN = "\033[32m"
 RESET = "\033[0m"
 
-TOKEN_FILE_PATH = Path("./token-sha256.txt")
-# Admin Token Hash (SHA256) for /api/admin api endpoints, keep empty to disable admin endpoints.
-ADMIN_TOKEN_HASH = "db09d473d4b6461b91bfa47e4fed3ef55e0234df4132ca7a827b0a69e8927cac"
+# 启动前初始化日志与配置
+settings = get_settings()
+setup_logging(settings)
 
-# 缓存合法哈希列表
-valid_token_hashes: set[str] = set()
-enable_auth: bool = True
-
-# 加载日志记录器
 log = logging.getLogger('uvicorn')
-
-
-def load_valid_token_hashes() -> None:
-    global log
-    """
-    读取txt内所有sha256合法token摘要，存入全局集合缓存
-    文件存在但无有效内容时，自动关闭鉴权校验
-    """
-    global valid_token_hashes, enable_auth
-    valid_token_hashes.clear()
-    # 判断文件是否存在
-    if not TOKEN_FILE_PATH.exists():
-        raise RuntimeError(
-            f"\n {RED}Token摘要文件（{TOKEN_FILE_PATH}）不存在，如需关闭Token鉴权，请创建空文件。 \n 请使用ctrl+c退出程序后创建文件。{RESET}"
-        )
-    with open(TOKEN_FILE_PATH, "r", encoding="utf-8") as f:
-        for line in f:
-            line = line.strip()
-            if line:  # 跳过空行
-                valid_token_hashes.add(line)
-    if len(valid_token_hashes) == 0:
-        enable_auth = False
-        log.info("[Auth] Token摘要列表无有效Token，已自动关闭全局Token校验")
-    else:
-        enable_auth = True
-        log.info(f"[Auth] 成功加载 {len(valid_token_hashes)} 条合法Token摘要")
 
 
 def get_token_sha256(raw_token: str) -> str:
@@ -68,12 +43,71 @@ def get_token_sha256(raw_token: str) -> str:
     return hashlib.sha256(raw_token.encode("utf-8")).hexdigest()
 
 
-# 启动前加载合法token哈希
-load_valid_token_hashes()
+# 启动前初始化数据库并清理过期 token / 过期对局
+try:
+    initDB()
+    # 启动时清理过期 token
+    try:
+        db_manager.clean_expired_tokens()
+    except Exception as e:
+        log.warning(f"[DB] 启动时清理过期 token 失败，已跳过: {e}")
+    # 启动时按配置清理一次过期对局（可通过 cleanup.run_on_startup 关闭）
+    try:
+        cleanup_cfg = settings.cleanup
+        if cleanup_cfg.enabled and cleanup_cfg.run_on_startup:
+            db_manager.clean_old_games(cleanup_cfg.retention_days, cleanup_cfg.mode)
+    except Exception:
+        pass
+except Exception as e:
+    log.critical(f"[DB] 数据库初始化失败，服务无法启动: {e}")
+    raise RuntimeError(f"数据库初始化失败，请检查数据库配置与连接: {e}") from e
 
 app = FastAPI(title="IdomWordle API")
 
 app.include_router(router)
+
+# 后台定期清理：过期 token + 过期对局（自动化垃圾回收）
+# 默认每小时执行一次；使用 asyncio 后台任务，保证过期数据不会长期积累。
+# 清理间隔与对局清理策略来自配置文件 cleanup 节，支持热重载。
+import asyncio
+_cleanup_task = None
+
+async def _periodic_clean_loop():
+    """后台循环：定时清理过期 token，并按配置清理过期对局。"""
+    try:
+        while True:
+            try:
+                # 1) 过期 token 清理
+                db_manager.clean_expired_tokens()
+                # 2) 过期对局清理（受配置开关控制）
+                cleanup_cfg = get_settings().cleanup
+                if cleanup_cfg.enabled:
+                    db_manager.clean_old_games(cleanup_cfg.retention_days, cleanup_cfg.mode)
+            except Exception:
+                # 忽略清理错误，避免任务退出
+                pass
+            # 每次循环重新读取配置，支持热更新间隔
+            interval = get_settings().cleanup.interval_seconds
+            await asyncio.sleep(interval)
+    except asyncio.CancelledError:
+        return
+
+@app.on_event("startup")
+async def _start_cleanup_task():
+    global _cleanup_task
+    # 启动后台清理任务（不阻塞启动）
+    loop = asyncio.get_running_loop()
+    _cleanup_task = loop.create_task(_periodic_clean_loop())
+
+@app.on_event("shutdown")
+async def _stop_cleanup_task():
+    global _cleanup_task
+    if _cleanup_task and not _cleanup_task.done():
+        _cleanup_task.cancel()
+        try:
+            await _cleanup_task
+        except Exception:
+            pass
 
 
 @app.middleware("http")
@@ -91,48 +125,80 @@ async def add_global_server_headers(request: Request, call_next):
 @app.middleware("http")
 async def bearer_auth_middleware(request: Request, call_next):
     """
-    全局中间件 - Bearer Token 鉴权
+    全局中间件 - Token 鉴权（基于数据库实时校验）
+
+    配置项（auth.enabled、auth.admin_token_hash 等）每次请求实时读取，
+    以支持通过 /api/admin/config/reload 热更新。
     """
     current_path = request.url.path
-    # 根路径（健康检查）、重载token端点、（可能的）文档端点免Token
-    if current_path in ("/", "/api/admin/reload-token", "/docs", "/redoc", "/openapi.json"):
+    # 根路径（健康检查）及文档端点免 Token
+    if current_path in ("/", "/docs", "/redoc", "/openapi.json"):
         return await call_next(request)
 
     # 放行所有 OPTIONS 跨域预检请求
     if request.method == "OPTIONS":
         return await call_next(request)
 
-    # Token Auth关闭则直接放行
-    if not enable_auth:
+    # 实时读取当前配置（支持热重载）
+    current_settings = get_settings()
+
+    # Token Auth 关闭则直接放行
+    if not current_settings.auth.enabled:
         return await call_next(request)
 
-    # 其他路径先校验Token，校验失败直接拦截
+    # 其他路径先校验 Authorization
     auth_header = request.headers.get("Authorization")
     if not auth_header or not auth_header.startswith("Bearer "):
         err = ErrorResponse(code=401, status="fail",
                             message="缺少Authorization请求头")
         return JSONResponse(status_code=401, content=err.model_dump())
 
-    # Token分割
     raw_part = auth_header.split(" ", 1)
     if len(raw_part) != 2 or not raw_part[1].strip():
         err = ErrorResponse(code=401, status="fail", message="Token格式错误")
         return JSONResponse(status_code=401, content=err.model_dump())
     raw_token = raw_part[1].strip()
-
     token_hash = get_token_sha256(raw_token)
-    if token_hash not in valid_token_hashes:
-        err = ErrorResponse(code=401, status="fail", message="Token无效")
+
+    # 管理员 Token（配置型）直接放行——每次实时取最新哈希，支持热更新
+    admin_hash = current_settings.auth.admin_token_hash
+    if admin_hash and token_hash == admin_hash:
+        return await call_next(request)
+
+    # 从数据库实时校验 Token
+    try:
+        token_row = db_manager.get_token_by_hash(token_hash)
+    except Exception as e:
+        log.error(f"[Auth] 查询 token 时出错: {e}")
+        err = ErrorResponse(code=500, status="fail", message="Token 查询失败")
+        return JSONResponse(status_code=500, content=err.model_dump())
+
+    if not token_row:
+        err = ErrorResponse(code=401, status="fail", message="Token无效或已过期")
         return JSONResponse(status_code=401, content=err.model_dump())
 
-    # Token合法则放行
+    # 若 token 配置了白名单 IP 列表，则校验客户端 IP
+    whitelist = token_row.get("whitelist_ips") or []
+    if whitelist:
+        client_ip = get_client_ip(request)
+        if not _ip_in_list(client_ip, whitelist):
+            err = ErrorResponse(code=403, status="fail", message="Token 不在允许的来源 IP 列表中")
+            return JSONResponse(status_code=403, content=err.model_dump())
+
+    # 更新 last_call_time（忽略错误）
+    try:
+        db_manager.update_last_call_time(token_row.get("id"))
+    except Exception:
+        pass
+
+    # Token 合法，继续处理请求
     response = await call_next(request)
     return response
 
-# 跨域中间件
+# 跨域中间件（来源来自统一配置）
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=settings.security.cors_origins,
     allow_credentials=True,
     allow_methods=[
         "GET",
@@ -165,22 +231,6 @@ def read_root(response: Response):
     return result
 
 
-@app.get("/api/admin/reload-token")
-def reload_token_list(request: Request):
-    """
-    管理员接口 - 重载token列表
-    """
-    auth_header = request.headers.get("Authorization", "")
-    if auth_header.startswith("Bearer "):
-        parts = auth_header.split(" ", 1)
-        if len(parts) != 2 or not parts[1].strip():
-            return JSONResponse(status_code=403, content=ErrorResponse(code=403, status="fail", message="管理员Token格式错误").model_dump())
-        admin_token = parts[1].strip()
-        if get_token_sha256(admin_token) == ADMIN_TOKEN_HASH:
-            load_valid_token_hashes()
-            return {"code": 200, "status": "success", "message": "重载成功", "total_valid": len(valid_token_hashes)}
-    # 无管理员权限
-    return JSONResponse(status_code=403, content=ErrorResponse(code=403, status="fail", message="无管理员操作权限").model_dump())
 
 
 @app.exception_handler(StarletteHTTPException)

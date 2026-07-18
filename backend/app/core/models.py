@@ -27,6 +27,7 @@ class CharFeedback(BaseModel):
 
 class Game(BaseModel):
     game_id: str
+    create_ip: str = "0.0.0.0"
     mode: GameMode
     difficulty: Difficulty
     max_rounds: int

@@ -442,6 +442,13 @@ body {
     transform: scale(0.95);
 }
 
+.guess .button.disabled,
+.guess .button:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+    pointer-events: none;
+}
+
 /* 候选字区域 */
 .candidate {
     width: 100%;

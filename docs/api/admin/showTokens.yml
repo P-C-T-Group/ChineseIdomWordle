@@ -4,18 +4,19 @@ info:
   description: ''
   version: 1.0.0
 paths:
-  /api/admin/reload-token:
+  /api/admin/tokens/:
     get:
-      summary: 管理员：重载
-      deprecated: true
-      description: 管理员接口 - 重载token列表
-      operationId: reload_token_list_api_admin_reload_token_get
+      summary: 管理员：查看token列表
+      deprecated: false
+      description: |-
+        查询当前有效的token
+        > 注意：无法通过此方式查询token原文（raw）
       tags:
         - admin
       parameters: []
       responses:
         '200':
-          description: Successful Response
+          description: ''
           content:
             application/json:
               schema:
@@ -27,29 +28,88 @@ paths:
                   status:
                     type: string
                     title: 请求状态
-                  message:
-                    type: string
-                    title: 详细信息
-                  total_valid:
+                  total:
                     type: integer
-                    title: token数
-                    description: 重载后的有效token数量
+                    title: 总计有效数
+                  tokens:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: integer
+                          title: token id
+                        sha256Hash:
+                          type: string
+                          title: token摘要
+                        createTime:
+                          type: string
+                          title: 创建时间
+                        creatorIp:
+                          type: string
+                          title: 创建者ip
+                        validUntil:
+                          type: string
+                          title: 有效期至
+                          description: null长期
+                          nullable: true
+                        whitelistIps:
+                          type: array
+                          items:
+                            type: string
+                          title: 白名单ip
+                          description: ip/cidr
+                          nullable: true
+                        lastCallTime:
+                          type: string
+                          title: 上次使用时间
+                          nullable: true
+                      required:
+                        - id
+                      x-apifox-orders:
+                        - id
+                        - sha256Hash
+                        - createTime
+                        - creatorIp
+                        - validUntil
+                        - whitelistIps
+                        - lastCallTime
+                    title: 有效列表
+                    nullable: true
                 required:
                   - code
                   - status
-                  - total_valid
+                  - total
                 x-apifox-orders:
                   - code
                   - status
-                  - message
-                  - total_valid
+                  - total
+                  - tokens
               example:
                 code: 200
                 status: success
-                message: 重载成功
-                total_valid: 4
+                total: 2
+                tokens:
+                  - id: 1
+                    sha256hash: >-
+                      50fe822a90fdd7f5cb7718dc87ec0547fa5cc8bda0016479d73171c5d66a5af2
+                    create_time: '2026-07-18T12:49:55'
+                    creator_ip: 127.0.0.1
+                    valid_until: '2026-12-31T23:59:59'
+                    whitelist_ips:
+                      - 10.0.0.0/8
+                      - 192.168.1.10
+                    last_call_time: null
+                  - id: 2
+                    sha256hash: >-
+                      4c5dc9b7708905f77f5e5d16316b5dfb425e68cb326dcd55a860e90a7707031e
+                    create_time: '2026-07-18T12:49:55'
+                    creator_ip: 127.0.0.1
+                    valid_until: null
+                    whitelist_ips: []
+                    last_call_time: '2026-07-18T12:59:08'
           headers: {}
-          x-apifox-name: OK
+          x-apifox-name: 成功
         '400':
           description: ''
           content:
@@ -251,10 +311,19 @@ paths:
                 message: 服务器内部异常，请稍后重试
           headers: {}
           x-apifox-name: 内部错误
-      security: []
+      security:
+        - 管理员token验证: []
+          x-apifox:
+            required: true
+            schemeGroups:
+              - id: fJmc1TgVDD5EsBaHDgvkl
+                schemeIds:
+                  - 管理员token验证
+            use:
+              id: fJmc1TgVDD5EsBaHDgvkl
       x-apifox-folder: admin
-      x-apifox-status: deprecated
-      x-run-in-apifox: https://app.apifox.com/web/project/8546191/apis/api-483296524-run
+      x-apifox-status: testing
+      x-run-in-apifox: https://app.apifox.com/web/project/8546191/apis/api-489125753-run
 components:
   schemas: {}
   securitySchemes:

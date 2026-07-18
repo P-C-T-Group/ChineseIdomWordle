@@ -6,7 +6,7 @@
     }
 })();
 
-var mode, difficulty, game_id, max_rounds, candidate_chars, gameStatus;
+var mode, difficulty, game_id, max_rounds, max_hints, candidate_chars, gameStatus;
 var mainGameDiv, startGameDiv, candidateDivLine1, candidateDivLine2, guessDiv;
 var turn, candidate, reverseCandidate, word;
 var isSubmitting = false;
@@ -21,6 +21,11 @@ function lockGame() {
     var candEl = document.querySelector('.candidate');
     if (guessEl) guessEl.classList.add('locked');
     if (candEl) candEl.classList.add('locked');
+    var hintBtn = document.getElementById('hint-btn');
+    if (hintBtn) {
+        hintBtn.disabled = true;
+        hintBtn.classList.add('disabled');
+    }
 }
 
 function unlockGame() {
@@ -128,6 +133,7 @@ function startGame() {
             reverseCandidate = {};
             game_id = data['game_id'];
             max_rounds = data['max_rounds'];
+            max_hints = data['max_hints'];
             candidate_chars = data['candidate_chars'];
             startGameDiv = document.getElementById('startPanel');
             mainGameDiv = document.getElementById('mainGame');
@@ -139,6 +145,11 @@ function startGame() {
             guessDiv.style.display = 'flex';
             unlockGame();
             document.getElementById('hints').innerHTML = '获取提示';
+            var hintBtn = document.getElementById('hint-btn');
+            if (hintBtn) {
+                hintBtn.disabled = false;
+                hintBtn.classList.remove('disabled');
+            }
             document.getElementById('msg').innerHTML = '';
 
             scrollToCurrentTurn();
@@ -171,6 +182,7 @@ function continueGame() {
             .then(data => {
                 game_id = data['game_id'];
                 max_rounds = data['max_rounds'];
+                max_hints = data['max_hints'];
                 candidate_chars = data['candidate_chars'];
                 startGameDiv = document.getElementById('startPanel');
                 mainGameDiv = document.getElementById('mainGame');
@@ -182,15 +194,10 @@ function continueGame() {
                 guessDiv.style.display = 'flex';
                 unlockGame();
                 var hintLabel = document.getElementById('hints');
-                if (data['hints_used'] == 1) {
-                    hintLabel.innerHTML = data['revealed_pinyins'][0];
-                    msgDiv.innerHTML = '还有一次提示机会喵';
-                } else if (data['hints_used'] == 2) {
-                    hintLabel.innerHTML = data['revealed_pinyins'][0] + '   ' + data['explanation'];
-                    msgDiv.innerHTML = '提示机会没有了喵';
-                } else {
-                    hintLabel.innerHTML = '获取提示';
-                }
+                var hintsUsed = data['hints_used'];
+                var revealedPinyins = data['revealed_pinyins'] || [];
+                var explanation = data['explanation'] || null;
+                updateHintDisplay(hintLabel, msgDiv, hintsUsed, revealedPinyins, explanation);
                 for (var _turn = 0; _turn < data['round']; _turn++) {
                     for (var i = 0; i <= 3; i++) {
                         document.getElementById(_turn + '/' + i).innerHTML = data['guesses'][_turn][i]['char'];
@@ -462,6 +469,41 @@ async function playing(result, gameData) {
     }
 }
 
+function updateHintDisplay(hintLabel, msgDiv, hintsUsed, revealedPinyins, explanation) {
+    // 根据已用提示次数和总提示次数更新提示显示
+    var remaining = max_hints - hintsUsed;
+
+    if (hintsUsed === 0) {
+        hintLabel.innerHTML = '获取提示';
+    } else {
+        // 拼接已揭示的拼音
+        var parts = [];
+        if (revealedPinyins && revealedPinyins.length > 0) {
+            parts.push(revealedPinyins.join(' '));
+        }
+        if (explanation) {
+            parts.push(explanation);
+        }
+        hintLabel.innerHTML = parts.join('   ');
+    }
+
+    // 更新提示按钮状态和消息
+    var hintBtn = document.getElementById('hint-btn');
+    if (remaining <= 0) {
+        msgDiv.innerHTML = '提示机会没有了喵';
+        if (hintBtn) {
+            hintBtn.disabled = true;
+            hintBtn.classList.add('disabled');
+        }
+    } else {
+        msgDiv.innerHTML = '还有' + remaining + '次提示机会喵';
+        if (hintBtn) {
+            hintBtn.disabled = false;
+            hintBtn.classList.remove('disabled');
+        }
+    }
+}
+
 function hint() {
     if (isHinting) return;
     var msgDiv = document.getElementById('msg');
@@ -479,13 +521,7 @@ function hint() {
             if (data['message'] == '提示次数已用完') {
                 msgDiv.innerHTML = '提示次数用完了喵'
             } else {
-                if (data['hints_used'] == 1) {
-                    hintLabel.innerHTML = data['revealed_pinyins'][0]
-                    msgDiv.innerHTML = '还有一次提示机会喵'
-                } else {
-                    hintLabel.innerHTML = data['revealed_pinyins'][0] + '   ' + data['explanation']
-                    msgDiv.innerHTML = '提示机会没有了喵'
-                }
+                updateHintDisplay(hintLabel, msgDiv, data['hints_used'], data['revealed_pinyins'], data['explanation']);
             }
         })
         .catch(error => {

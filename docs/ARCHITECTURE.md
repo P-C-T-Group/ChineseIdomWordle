@@ -12,12 +12,12 @@
                                          │
                                          ▼
                                   ┌──────────────┐
-                                  │  JSON 数据文件 │
-                                  │ (成语库/干扰字) │
+                                  │  数据库存储    │
+                                  │ SQLite/MySQL │
                                   └──────────────┘
 ```
 
-前端为纯静态页面（HTML/CSS/JS），后端为 FastAPI 服务，游戏数据存储在内存字典中，成语库从 JSON 文件加载。
+前端为纯静态页面（HTML/CSS/JS），后端为 FastAPI 服务，游戏数据持久化到数据库（默认 SQLite），成语库从 JSON 文件加载。
 
 ---
 
@@ -32,25 +32,32 @@ backend/
 │   │   ├── __init__.py
 │   │   ├── models.py           # Pydantic 模型（Idiom, Game, CharFeedback, Difficulty, GameMode）
 │   │   ├── feedback.py         # 猜测反馈算法（correct/present/absent 判定）
-│   │   └── candidate.py        # 候选字生成逻辑（按难度抽取干扰字）
+│   │   ├── candidate.py        # 候选字生成逻辑（按难度抽取干扰字）
+│   │   ├── config.py           # 统一配置加载器（TOML + 环境变量覆盖 + 全局单例）
+│   │   ├── logging_setup.py    # 日志配置（根据 config.toml 初始化 dictConfig）
+│   │   └── security.py         # 安全工具（IP/CIDR 校验、客户端 IP 解析、管理员白名单）
 │   ├── schemas/                # 请求/响应 Schema（Pydantic v2）
 │   │   ├── __init__.py
 │   │   ├── game.py             # CreateGame/Guess/Hint/Reveal/GameState 等请求响应模型
-│   │   └── DB.py               # 数据库相关 Schema
+│   │   ├── config.py           # 统一配置 Schema（数据库/鉴权/游戏/成语库/日志/安全）
+│   │   └── DB.py               # 数据库相关 Schema（兼容导出 DatabaseType/DatabaseConfig）
 │   ├── services/               # 业务逻辑与路由
 │   │   ├── __init__.py
 │   │   ├── game_service.py     # 游戏核心逻辑（加载成语、创建游戏、提交猜测、提示、揭晓）
 │   │   └── routes.py           # API 路由定义（/api/games 等端点）
 │   └── database/               # 数据库相关
 │       ├── __init__.py
-│       ├── init.sql            # 数据库初始化 SQL
-│       └── initDB.py           # 数据库初始化脚本
+│       ├── db_manager.py       # 数据库管理器（SQLite/MySQL 抽象层）
+│       ├── init.sql            # SQLite 建表 SQL
+│       └── initDB.py           # 数据库初始化脚本（支持双模式）
 ├── tests/                      # 单元测试
 │   ├── __init__.py
 │   └── test_feedback.py        # 反馈算法单元测试
 ├── logs/                       # 运行日志（按日期轮转）
 ├── requirements.txt            # Python 依赖
-├── uvicorn_config.json         # Uvicorn 日志格式配置
+├── config.example.toml         # 统一配置模板（TOML，含注释）
+├── config.toml                 # 实际配置（gitignore，需从模板复制）
+├── .env.example                # 环境变量覆盖说明（敏感项可选）
 ├── token-sha256.txt            # 合法 Bearer Token 的 SHA-256 摘要（每行一个）
 └── pullUpServer.sh             # 一键启动脚本
 ```
@@ -63,9 +70,15 @@ backend/
 | `core/models.py` | 定义领域模型：`Idiom`（成语条目）、`Game`（游戏状态）、`CharFeedback`（单字反馈）、枚举 `Difficulty`/`GameMode` |
 | `core/feedback.py` | `evaluate_guess()` — 对比猜测与目标成语，输出每字的 correct/present/absent 状态 |
 | `core/candidate.py` | `generate_candidates()` — 根据难度从干扰字池抽取候选字，与目标字合并打乱 |
+| `core/config.py` | 统一配置加载器：读取 `config.toml` + 环境变量覆盖，Pydantic 校验，提供 `get_settings()` 全局单例 |
+| `core/logging_setup.py` | 根据配置初始化日志系统（控制台 + 按日期轮转文件），替代硬编码的 uvicorn_config.json |
+| `core/security.py` | 安全工具：IP/CIDR 匹配、按可信代理解析客户端真实 IP、管理员接口白名单校验 |
 | `schemas/game.py` | API 层 Pydantic Schema，含输入校验（`GuessRequest` 验证 4 字汉字） |
-| `services/game_service.py` | 游戏状态机：`create_game()`、`submit_guess()`、`get_game()`、`use_hint()`、`ensure_game()`；内存存储 `games: dict[str, Game]` |
+| `schemas/config.py` | 统一配置 Schema（数据库/鉴权/游戏/成语库/日志/安全），含字段校验器 |
+| `services/game_service.py` | 游戏状态机：`create_game()`、`submit_guess()`、`get_game()`、`use_hint()`、`reveal_game()`、`ensure_game()`；通过 `db_manager` 持久化到数据库 |
 | `services/routes.py` | REST 端点定义，将 HTTP 请求映射到 service 层函数 |
+| `database/db_manager.py` | 数据库管理器：抽象 SQLite/MySQL 差异，提供 `save_game()`、`load_game()`、`game_exists()` 统一接口 |
+| `database/initDB.py` | 数据库初始化：根据配置创建表结构和索引 |
 
 ---
 
@@ -113,11 +126,30 @@ client/
 
 ## 数据模型
 
-### 内存存储
+### 数据持久化
 
-游戏数据存储在全局字典 `games: dict[str, Game]` 中，服务重启后丢失。
+游戏数据通过 `app/database/db_manager.py` 持久化到数据库，默认使用 SQLite（`data/wordle.db`），可通过环境变量 `DB_TYPE=mysql` 切换为 MySQL。服务重启后游戏数据不丢失。
 
-> **TODO**: 数据持久化。准备引入 MySQL。
+#### 数据库表结构（`games` 表）
+
+| 字段 | SQLite 类型 | MySQL 类型 | 说明 |
+|------|------------|------------|------|
+| `game_id` | TEXT PRIMARY KEY | varchar(64) PK | UUID 唯一标识 |
+| `create_time` | TIMESTAMP | timestamp | 创建时间（自动） |
+| `create_ip` | TEXT | varchar(255) | 创建者 IP |
+| `mode` | TEXT | enum | daily / unlimited |
+| `difficulty` | TEXT | enum | easy / medium / hard |
+| `max_rounds` | INTEGER | tinyint | 最大轮次 |
+| `candidate_chars` | TEXT | text | 候选字（JSON 数组） |
+| `target_idiom` | TEXT | varchar(8) | 目标成语 |
+| `target_pinyin` | TEXT | varchar(32) | 目标拼音 |
+| `target_explanation` | TEXT | text | 目标释义 |
+| `guesses` | TEXT | longtext | 历史猜测（JSON） |
+| `game_status` | TEXT | enum | playing / won / lost |
+| `round` | INTEGER | tinyint | 当前轮次 |
+| `hints_used` | INTEGER | tinyint | 已用提示数 |
+| `max_hints` | TEXT | varchar(255) | 最大提示数 |
+| `revealed_pinyins` | TEXT | text | 已揭示拼音（JSON 数组） |
 
 ### 核心模型
 
@@ -158,11 +190,13 @@ client/
 
 ### 难度配置
 
-| 难度 | 候选字数量 | 最大轮次 | 成语库 |
-|------|-----------|---------|--------|
-| easy | 10 | 12 | `data/easy.json` |
-| medium | 14 | 10 | `data/medium.json` |
-| hard | 20 | 8 | `data/hard.json` |
+默认值如下（均可在 `config.toml` 的 `[game.*]` 段调整）：
+
+| 难度 | 候选字数量 | 最大轮次 | 最大提示次数 | 成语库 |
+|------|-----------|---------|------------|--------|
+| easy | 10 | 12 | 2 | `data/easy.json` |
+| medium | 14 | 10 | 2 | `data/medium.json` |
+| hard | 20 | 8 | 2 | `data/hard.json` |
 
 ---
 
@@ -216,11 +250,12 @@ client/
 
 后端实现了全局 Bearer Token 鉴权中间件：
 
-1. 启动时从 `token-sha256.txt` 加载合法 Token 的 SHA-256 摘要到内存集合
+1. 启动时根据 `config.toml` 的 `auth.enabled` 决定是否开启鉴权
+2. 从 `auth.token_file`（默认 `token-sha256.txt`）加载合法 Token 的 SHA-256 摘要到内存集合
 2. 每个请求检查 `Authorization: Bearer <token>` 头，计算 SHA-256 并与集合比对
 3. 若文件为空（无有效 Token），自动关闭鉴权，方便本地开发
-4. Admin 端点（`/api/admin/*`）使用独立的 `ADMIN_TOKEN_HASH` 校验
-5. 支持热加载：调用 `/api/admin/reloadTokens` 重新读取文件，无需重启
+4. Admin 端点（`/api/admin/*`）使用 `auth.admin_token_hash` 校验，并可通过 `security.admin_allowlist` 限制来源 IP/CIDR
+5. 支持热加载：调用 `/api/admin/reload-token` 重新读取文件，无需重启
 
 前端默认使用 `test-token`（摘要已预置）。
 
@@ -228,7 +263,22 @@ client/
 
 ## 配置
 
-- **CORS**: 已配置允许所有来源跨域请求
-- **日志**: Uvicorn 自定义格式，日志文件输出到 `logs/` 目录按日期轮转
+后端所有配置已统一到 `backend/config.toml`（TOML 格式），涵盖：
+
+- **数据库**：类型（SQLite/MySQL）、连接参数
+- **鉴权**：全局鉴权开关、管理员 Token 哈希、玩家 Token 摘要文件路径
+- **游戏设置**：三难度（easy/medium/hard）的最大轮数、候选字数量、最大提示次数（≤5）
+- **成语库**：难中易三档成语库 JSON 路径、干扰字库路径
+- **日志**：级别、目录、文件名、按日期轮转份数
+- **安全**：CORS 来源、可信任代理 IP/CIDR（用于解析 X-Forwarded-For）、管理员接口白名单 IP/CIDR
+
+配置加载流程（`app/core/config.py`）：
+
+1. 读取 `config.toml`（不存在则全部使用默认值）
+2. 应用环境变量覆盖（`WORDLE_*` 前缀，优先级最高，用于部署时注入密钥）
+3. Pydantic 校验后生成全局单例 `Settings`，各模块通过 `get_settings()` 访问
+
+配置模板见 `config.example.toml`，实际配置 `config.toml` 已加入 `.gitignore`。
+
 - **端口**: 默认 8000
 - **启动方式**: `uvicorn app.main:app --reload --port 8000`（开发模式，支持热重载）

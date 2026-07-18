@@ -4,18 +4,40 @@ info:
   description: ''
   version: 1.0.0
 paths:
-  /api/admin/reload-token:
-    get:
-      summary: 管理员：重载
-      deprecated: true
-      description: 管理员接口 - 重载token列表
-      operationId: reload_token_list_api_admin_reload_token_get
+  /api/admin/config/clean:
+    post:
+      summary: 管理员：清理垃圾对局
+      deprecated: false
+      description: |-
+        删除指定天数前创建的符合要求的对局
+        > 注意：不会影响配置文件`[cleanup]`段定义的清理策略
       tags:
         - admin
       parameters: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                retentionDays:
+                  type: integer
+                  title: 天数
+                mode:
+                  type: string
+                  title: 模式
+                  description: |-
+                    all：指定天数前的所有对局；
+                    non_playing：仅清理完成的对局
+              x-apifox-orders:
+                - retentionDays
+                - mode
+            example:
+              retention_days: 7
+              mode: all
       responses:
         '200':
-          description: Successful Response
+          description: ''
           content:
             application/json:
               schema:
@@ -27,29 +49,32 @@ paths:
                   status:
                     type: string
                     title: 请求状态
-                  message:
-                    type: string
-                    title: 详细信息
-                  total_valid:
+                  retentionDays:
                     type: integer
-                    title: token数
-                    description: 重载后的有效token数量
+                    title: 天数
+                  mode:
+                    type: string
+                    title: 清理模式
+                  deleted:
+                    type: integer
+                    title: 删除局数
                 required:
                   - code
                   - status
-                  - total_valid
                 x-apifox-orders:
                   - code
                   - status
-                  - message
-                  - total_valid
+                  - retentionDays
+                  - mode
+                  - deleted
               example:
                 code: 200
                 status: success
-                message: 重载成功
-                total_valid: 4
+                retention_days: 7
+                mode: all
+                deleted: 0
           headers: {}
-          x-apifox-name: OK
+          x-apifox-name: 成功
         '400':
           description: ''
           content:
@@ -251,10 +276,19 @@ paths:
                 message: 服务器内部异常，请稍后重试
           headers: {}
           x-apifox-name: 内部错误
-      security: []
+      security:
+        - 管理员token验证: []
+          x-apifox:
+            required: true
+            schemeGroups:
+              - id: 3dSAHeBolOWxePXnITIjD
+                schemeIds:
+                  - 管理员token验证
+            use:
+              id: 3dSAHeBolOWxePXnITIjD
       x-apifox-folder: admin
-      x-apifox-status: deprecated
-      x-run-in-apifox: https://app.apifox.com/web/project/8546191/apis/api-483296524-run
+      x-apifox-status: released
+      x-run-in-apifox: https://app.apifox.com/web/project/8546191/apis/api-489131047-run
 components:
   schemas: {}
   securitySchemes:
