@@ -12,6 +12,7 @@ from typing import Optional
 from app.core.models import Game, CharFeedback, Difficulty, GameMode
 from app.core.config import get_settings
 from app.schemas.DB import DatabaseType
+from app.schemas.config import CleanupMode
 
 log = logging.getLogger('uvicorn')
 
@@ -247,6 +248,48 @@ def clean_expired_tokens() -> None:
             conn.commit()
         finally:
             conn.close()
+
+
+def clean_old_games(retention_days: int, mode: CleanupMode = CleanupMode.non_playing) -> int:
+    """清理指定天数前创建的对局，返回被删除的对局数量。
+
+    - retention_days: 清理多少天前创建的对局
+    - mode: CleanupMode.all 清理所有过期对局，不论状态；
+            CleanupMode.non_playing 仅清理非 playing 状态（won / lost）的过期对局
+    """
+    cfg = get_config()
+    ph = _placeholder()
+    # 根据模式构造 WHERE 条件
+    if mode == CleanupMode.non_playing:
+        status_clause = "AND game_status <> " + ph
+        params = [retention_days, "playing"]
+    else:
+        status_clause = ""
+        params = [retention_days]
+
+    deleted = 0
+    if cfg.type == DatabaseType.sqlite:
+        with _sqlite_lock:
+            conn = _get_sqlite_conn()
+            try:
+                sql = f"DELETE FROM games WHERE create_time < datetime('now', '-' || ? || ' days') {status_clause}"
+                cursor = conn.execute(sql, params)
+                deleted = cursor.rowcount
+                conn.commit()
+            finally:
+                conn.close()
+    else:
+        conn = _get_mysql_conn()
+        try:
+            with conn.cursor() as cursor:
+                sql = f"DELETE FROM games WHERE create_time < DATE_SUB(NOW(), INTERVAL %s DAY) {status_clause}"
+                cursor.execute(sql, params)
+                deleted = cursor.rowcount
+            conn.commit()
+        finally:
+            conn.close()
+    log.info(f"[Cleanup] 清理过期对局: 保留天数={retention_days}, 模式={mode.value}, 删除数量={deleted}")
+    return deleted
 
 
 def list_tokens() -> List[Dict[str, Any]]:

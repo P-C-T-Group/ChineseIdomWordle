@@ -43,12 +43,19 @@ def get_token_sha256(raw_token: str) -> str:
     return hashlib.sha256(raw_token.encode("utf-8")).hexdigest()
 
 
-# 启动前初始化数据库并清理过期 token
+# 启动前初始化数据库并清理过期 token / 过期对局
 try:
     initDB()
     # 启动时清理过期 token
     try:
         db_manager.clean_expired_tokens()
+    except Exception:
+        pass
+    # 启动时按配置清理一次过期对局（可通过 cleanup.run_on_startup 关闭）
+    try:
+        cleanup_cfg = settings.cleanup
+        if cleanup_cfg.enabled and cleanup_cfg.run_on_startup:
+            db_manager.clean_old_games(cleanup_cfg.retention_days, cleanup_cfg.mode)
     except Exception:
         pass
 except Exception as e:
@@ -59,21 +66,29 @@ app = FastAPI(title="IdomWordle API")
 
 app.include_router(router)
 
-# 后台定期清理过期 token（自动化垃圾回收）
-# 每小时执行一次；使用 asyncio 后台任务，保证数据库中的过期 token 不会长期积累
+# 后台定期清理：过期 token + 过期对局（自动化垃圾回收）
+# 默认每小时执行一次；使用 asyncio 后台任务，保证过期数据不会长期积累。
+# 清理间隔与对局清理策略来自配置文件 cleanup 节，支持热重载。
 import asyncio
 _cleanup_task = None
 
-async def _periodic_clean_loop(interval_seconds: int = 3600):
-    """后台循环：定时调用 db_manager.clean_expired_tokens() 清理过期 token。"""
+async def _periodic_clean_loop():
+    """后台循环：定时清理过期 token，并按配置清理过期对局。"""
     try:
         while True:
             try:
+                # 1) 过期 token 清理
                 db_manager.clean_expired_tokens()
+                # 2) 过期对局清理（受配置开关控制）
+                cleanup_cfg = get_settings().cleanup
+                if cleanup_cfg.enabled:
+                    db_manager.clean_old_games(cleanup_cfg.retention_days, cleanup_cfg.mode)
             except Exception:
                 # 忽略清理错误，避免任务退出
                 pass
-            await asyncio.sleep(interval_seconds)
+            # 每次循环重新读取配置，支持热更新间隔
+            interval = get_settings().cleanup.interval_seconds
+            await asyncio.sleep(interval)
     except asyncio.CancelledError:
         return
 

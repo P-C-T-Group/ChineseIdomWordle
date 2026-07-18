@@ -1,5 +1,7 @@
 from fastapi import APIRouter, HTTPException, Response, Request
 from fastapi.responses import JSONResponse
+from pydantic import BaseModel, Field
+from typing import Optional
 from app.schemas.game import (
     CreateGameRequest,
     CreateGameResponse,
@@ -9,6 +11,7 @@ from app.schemas.game import (
     HintResponse,
     ErrorResponse,
 )
+from app.schemas.config import CleanupMode
 from app.services.game_service import (
     create_game,
     submit_guess,
@@ -33,6 +36,36 @@ def _admin_error(status_code: int, message: str) -> JSONResponse:
         content=ErrorResponse(code=status_code, status="fail",
                               message=message).model_dump(),
     )
+
+
+def _verify_admin(request: Request):
+    """管理员鉴权统一校验：IP 白名单 + Bearer Token 比对。
+    返回 (admin_hash, None) 表示鉴权通过；返回 (None, JSONResponse) 表示鉴权失败。
+    """
+    if not is_admin_allowed(request):
+        return None, _admin_error(403, '来源IP无权访问管理员接口')
+    admin_hash = get_settings().auth.admin_token_hash
+    if not admin_hash:
+        return None, _admin_error(403, '未配置管理员Token')
+    auth_header = request.headers.get('Authorization', '')
+    if not auth_header.startswith('Bearer '):
+        return None, _admin_error(403, '缺少管理员Authorization')
+    admin_token = auth_header.split(' ', 1)[1].strip()
+    if hashlib.sha256(admin_token.encode('utf-8')).hexdigest() != admin_hash:
+        return None, _admin_error(403, '管理员验证失败')
+    return admin_hash, None
+
+
+class AdminCleanRequest(BaseModel):
+    """管理员立即清理接口请求体
+
+    - retention_days: 清理多少天前创建的对局；留空则使用配置中的值
+    - mode: 清理模式，all（清理所有过期对局）或 non_playing（仅清理非 playing 的过期对局）；留空则使用配置中的值
+    """
+    retention_days: Optional[int] = Field(
+        None, ge=1, le=3650, description="清理天数前创建的对局")
+    mode: Optional[CleanupMode] = Field(
+        None, description="清理模式：all / non_playing")
 
 
 router = APIRouter(prefix="/api")
@@ -173,17 +206,9 @@ def api_game_reveal(game_id: str, response: Response):
 async def admin_add_tokens(request: Request):
     """增加接口：传入多条 token 原文及其属性，返回每条 token 的 id。"""
     # 管理员白名单 IP 校验
-    if not is_admin_allowed(request):
-        return _admin_error(403, '来源IP无权访问管理员接口')
-    admin_hash = get_settings().auth.admin_token_hash
-    if not admin_hash:
-        return _admin_error(403, '未配置管理员Token')
-    auth_header = request.headers.get('Authorization', '')
-    if not auth_header.startswith('Bearer '):
-        return _admin_error(403, '缺少管理员Authorization')
-    admin_token = auth_header.split(' ', 1)[1].strip()
-    if hashlib.sha256(admin_token.encode('utf-8')).hexdigest() != admin_hash:
-        return _admin_error(403, '管理员验证失败')
+    admin_hash, auth_err = _verify_admin(request)
+    if auth_err is not None:
+        return auth_err
 
     payload = await request.json()
     items = payload.get('tokens') or []
@@ -198,7 +223,6 @@ async def admin_add_tokens(request: Request):
         sha = hashlib.sha256(raw.encode('utf-8')).hexdigest()
         # 管理员 Token 不允许写入数据库
         if admin_hash and sha == admin_hash:
-            # 跳过并记录为失败
             created.append({'raw': raw, 'error': '为管理员Token，禁止写入数据库'})
             continue
         try:
@@ -213,17 +237,9 @@ async def admin_add_tokens(request: Request):
 @router.get('/admin/tokens')
 async def admin_list_tokens(request: Request):
     """查询接口：列出有效 token 数及其 id 与属性（不含管理员 token）。"""
-    if not is_admin_allowed(request):
-        return _admin_error(403, '来源IP无权访问管理员接口')
-    admin_hash = get_settings().auth.admin_token_hash
-    if not admin_hash:
-        return _admin_error(403, '未配置管理员Token')
-    auth_header = request.headers.get('Authorization', '')
-    if not auth_header.startswith('Bearer '):
-        return _admin_error(403, '缺少管理员Authorization')
-    admin_token = auth_header.split(' ', 1)[1].strip()
-    if hashlib.sha256(admin_token.encode('utf-8')).hexdigest() != admin_hash:
-        return _admin_error(403, '管理员验证失败')
+    _, auth_err = _verify_admin(request)
+    if auth_err is not None:
+        return auth_err
 
     try:
         rows = db_manager.list_tokens()
@@ -251,17 +267,9 @@ async def admin_delete_tokens(request: Request):
       - deleted:    实际删除的行数（0 表示未找到）
       - error:      若出错则为错误信息
     """
-    if not is_admin_allowed(request):
-        return _admin_error(403, '来源IP无权访问管理员接口')
-    admin_hash = get_settings().auth.admin_token_hash
-    if not admin_hash:
-        return _admin_error(403, '未配置管理员Token')
-    auth_header = request.headers.get('Authorization', '')
-    if not auth_header.startswith('Bearer '):
-        return _admin_error(403, '缺少管理员Authorization')
-    admin_token = auth_header.split(' ', 1)[1].strip()
-    if hashlib.sha256(admin_token.encode('utf-8')).hexdigest() != admin_hash:
-        return _admin_error(403, '管理员验证失败')
+    _, auth_err = _verify_admin(request)
+    if auth_err is not None:
+        return auth_err
 
     try:
         payload = await request.json()
@@ -285,13 +293,15 @@ async def admin_delete_tokens(request: Request):
             results.append({'identifier': ident, 'deleted': 0, 'error': '空标识'})
             continue
         if not isinstance(ident, (str, int)):
-            results.append({'identifier': ident, 'deleted': 0, 'error': '标识必须是字符串或数字'})
+            results.append(
+                {'identifier': ident, 'deleted': 0, 'error': '标识必须是字符串或数字'})
             continue
         try:
             cnt = db_manager.delete_token(str(ident))
             results.append({'identifier': ident, 'deleted': cnt})
         except Exception as e:
-            results.append({'identifier': ident, 'deleted': 0, 'error': str(e)})
+            results.append(
+                {'identifier': ident, 'deleted': 0, 'error': str(e)})
 
     total_deleted = sum(r.get('deleted', 0) for r in results)
     return {'code': 200, 'status': 'success', 'total': total_deleted, 'results': results}
@@ -321,17 +331,9 @@ async def admin_reload_config(request: Request):
       - requires_restart: 需要重启才能生效的配置项提示
       - idioms_reloaded: 成语库重新加载后的条目总数
     """
-    if not is_admin_allowed(request):
-        return _admin_error(403, '来源IP无权访问管理员接口')
-    admin_hash = get_settings().auth.admin_token_hash
-    if not admin_hash:
-        return _admin_error(403, '未配置管理员Token')
-    auth_header = request.headers.get('Authorization', '')
-    if not auth_header.startswith('Bearer '):
-        return _admin_error(403, '缺少管理员Authorization')
-    admin_token = auth_header.split(' ', 1)[1].strip()
-    if hashlib.sha256(admin_token.encode('utf-8')).hexdigest() != admin_hash:
-        return _admin_error(403, '管理员验证失败')
+    _, auth_err = _verify_admin(request)
+    if auth_err is not None:
+        return auth_err
 
     # 1) 重新加载配置（会重新读取 TOML + 环境变量并做校验）
     try:
@@ -358,9 +360,9 @@ async def admin_reload_config(request: Request):
     except Exception as e:
         errors.append(f'idiom_library: {e}')
 
-    # auth / security / game / database 等模块每次调用都实时 get_settings()，
+    # auth / security / game / database / cleanup 等模块每次调用都实时 get_settings()，
     # Settings 单例已被 reload_settings() 更新，自动生效，无需额外操作。
-    applied.extend(['auth', 'security', 'game', 'database'])
+    applied.extend(['auth', 'security', 'game', 'database', 'cleanup'])
 
     result = {
         'code': 200,
@@ -374,3 +376,41 @@ async def admin_reload_config(request: Request):
     if errors:
         result['warnings'] = errors
     return result
+
+
+# ----------------- 管理员垃圾清理 -----------------
+@router.post('/admin/config/clean')
+async def admin_clean_games(req: AdminCleanRequest, request: Request):
+    """管理员：立即清理过期对局。
+
+    请求体字段均为可选，未提供时使用当前配置文件中的 cleanup.* 值：
+      - retention_days: 清理多少天前创建的对局
+      - mode: all（清理所有过期对局，不论状态）/ non_playing（仅清理非 playing 的过期对局）
+
+    请求体字段均为可选，未提供时使用当前配置文件中的 cleanup.* 值；
+    传入的参数仅本次调用生效，不会修改配置文件，也不影响后台自动清理任务：
+      - retention_days: 清理多少天前创建的对局
+      - mode: all（清理所有过期对局，不论状态）/ non_playing（仅清理非 playing 的过期对局）
+
+    返回实际使用的清理参数及被删除的对局数量。
+    """
+    _, auth_err = _verify_admin(request)
+    if auth_err is not None:
+        return auth_err
+
+    cleanup_cfg = get_settings().cleanup
+    retention_days = req.retention_days if req.retention_days is not None else cleanup_cfg.retention_days
+    mode = req.mode if req.mode is not None else cleanup_cfg.mode
+
+    try:
+        deleted = db_manager.clean_old_games(retention_days, mode)
+    except Exception as e:
+        return _admin_error(500, f'清理对局失败: {e}')
+
+    return {
+        'code': 200,
+        'status': 'success',
+        'retention_days': retention_days,
+        'mode': mode.value,
+        'deleted': deleted,
+    }

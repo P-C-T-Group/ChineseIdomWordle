@@ -171,6 +171,34 @@ class SecurityConfig(BaseModel):
     admin_allowlist: list[str] = []
 
 
+# ─── 垃圾清理 ───
+
+class CleanupMode(str, Enum):
+    """对局清理模式
+
+    - all: 清理所有过期对局，不论状态
+    - non_playing: 仅清理状态不为 playing 的过期对局（won / lost）
+    """
+    all = "all"
+    non_playing = "non_playing"
+
+
+class CleanupConfig(BaseModel):
+    """垃圾清理配置
+
+    - enabled: 是否开启后台自动清理
+    - retention_days: 清理多少天前创建的对局
+    - mode: 清理模式，all（清理所有过期对局）或 non_playing（仅清理非 playing 的过期对局）
+    - interval_seconds: 后台清理任务的执行间隔（秒），默认每小时一次
+    - run_on_startup: 是否在服务启动时执行一次清理
+    """
+    enabled: bool = True
+    retention_days: int = Field(30, ge=1, le=3650, description="清理天数前创建的对局")
+    mode: CleanupMode = CleanupMode.non_playing
+    interval_seconds: int = Field(3600, ge=60, le=86400, description="后台清理间隔（秒）")
+    run_on_startup: bool = True
+
+
 # ─── 顶层 ───
 
 class Settings(BaseModel):
@@ -181,6 +209,7 @@ class Settings(BaseModel):
     idiom_library: IdiomLibraryConfig = IdiomLibraryConfig()
     logging: LoggingConfig = LoggingConfig()
     security: SecurityConfig = SecurityConfig()
+    cleanup: CleanupConfig = CleanupConfig()
 
     @model_validator(mode="after")
     def _check_admin_token_when_enabled(self) -> "Settings":
