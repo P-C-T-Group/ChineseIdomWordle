@@ -61,3 +61,7 @@ node_modules/
 
 # env
 */.env
+
+# 统一配置（含可能的敏感项，如管理员Token哈希）
+# 模板 config.example.toml 已纳入版本控制
+backend/config.toml

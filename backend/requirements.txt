@@ -3,3 +3,5 @@ pydantic>=2.0.0
 pytest>=7.0.0
 fastapi>=0.104.0
 pymysql
+# Python 3.10 读取 TOML 配置所需（3.11+ 内置 tomllib，无需安装）
+tomli>=2.0.0; python_version < "3.11"

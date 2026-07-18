@@ -13,11 +13,14 @@ from fastapi.exceptions import RequestValidationError
 from app.services.routes import router
 from app.schemas.game import ErrorResponse
 from starlette.exceptions import HTTPException as StarletteHTTPException
-# [feat #3] AUTH
+# 鉴权
 import hashlib
-from pathlib import Path
 # 数据库初始化
 from app.database.initDB import initDB
+# 统一配置
+from app.core.config import get_settings
+from app.core.logging_setup import setup_logging
+from app.core.security import is_admin_allowed
 # 日志
 import logging
 
@@ -25,30 +28,39 @@ RED = "\033[31m"
 GREEN = "\033[32m"
 RESET = "\033[0m"
 
-TOKEN_FILE_PATH = Path("./token-sha256.txt")
-# Admin Token Hash (SHA256) for /api/admin api endpoints, keep empty to disable admin endpoints.
-ADMIN_TOKEN_HASH = "db09d473d4b6461b91bfa47e4fed3ef55e0234df4132ca7a827b0a69e8927cac"
+# 启动前初始化日志与配置
+settings = get_settings()
+setup_logging(settings)
+
+# Token 摘要文件路径与管理员 Token 哈希均来自统一配置
+# 路径已由 Settings 统一解析为绝对路径
+TOKEN_FILE_PATH = settings.auth.token_file_resolved
+ADMIN_TOKEN_HASH = settings.auth.admin_token_hash
 
 # 缓存合法哈希列表
 valid_token_hashes: set[str] = set()
-enable_auth: bool = True
+enable_auth: bool = settings.auth.enabled
 
 # 加载日志记录器
 log = logging.getLogger('uvicorn')
 
 
 def load_valid_token_hashes() -> None:
-    global log
     """
     读取txt内所有sha256合法token摘要，存入全局集合缓存
     文件存在但无有效内容时，自动关闭鉴权校验
     """
     global valid_token_hashes, enable_auth
     valid_token_hashes.clear()
+    # 鉴权总开关关闭则直接清空并跳过文件读取
+    if not settings.auth.enabled:
+        enable_auth = False
+        log.info("[Auth] 配置已关闭全局 Token 校验")
+        return
     # 判断文件是否存在
     if not TOKEN_FILE_PATH.exists():
         raise RuntimeError(
-            f"\n {RED}Token摘要文件（{TOKEN_FILE_PATH}）不存在，如需关闭Token鉴权，请创建空文件。 \n 请使用ctrl+c退出程序后创建文件。{RESET}"
+            f"\n {RED}Token摘要文件（{TOKEN_FILE_PATH}）不存在，如需关闭Token鉴权，请在配置中设置 auth.enabled=false。 \n 请使用ctrl+c退出程序后修正配置。{RESET}"
         )
     with open(TOKEN_FILE_PATH, "r", encoding="utf-8") as f:
         for line in f:
@@ -74,7 +86,11 @@ def get_token_sha256(raw_token: str) -> str:
 load_valid_token_hashes()
 
 # 启动前初始化数据库
-initDB()
+try:
+    initDB()
+except Exception as e:
+    log.critical(f"[DB] 数据库初始化失败，服务无法启动: {e}")
+    raise RuntimeError(f"数据库初始化失败，请检查数据库配置与连接: {e}") from e
 
 app = FastAPI(title="IdomWordle API")
 
@@ -134,10 +150,10 @@ async def bearer_auth_middleware(request: Request, call_next):
     response = await call_next(request)
     return response
 
-# 跨域中间件
+# 跨域中间件（来源来自统一配置）
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=settings.security.cors_origins,
     allow_credentials=True,
     allow_methods=[
         "GET",
@@ -175,6 +191,12 @@ def reload_token_list(request: Request):
     """
     管理员接口 - 重载token列表
     """
+    # 管理员白名单 IP 校验
+    if not is_admin_allowed(request):
+        return JSONResponse(status_code=403, content=ErrorResponse(code=403, status="fail", message="来源IP无权访问管理员接口").model_dump())
+    # 未配置管理员 Token 哈希则拒绝
+    if not ADMIN_TOKEN_HASH:
+        return JSONResponse(status_code=403, content=ErrorResponse(code=403, status="fail", message="未配置管理员Token").model_dump())
     auth_header = request.headers.get("Authorization", "")
     if auth_header.startswith("Bearer "):
         parts = auth_header.split(" ", 1)

@@ -1,0 +1,93 @@
+# ===========================================================================
+# ChineseIdomWordle 后端统一配置文件
+# ---------------------------------------------------------------------------
+# 复制本文件为 config.toml 后按需修改。未列出的字段使用代码中的默认值。
+# 敏感项（如数据库密码、管理员 Token 摘要）也可通过环境变量覆盖，详见
+# app/core/config.py 的 _ENV_OVERRIDES。环境变量优先级高于本文件。
+# ===========================================================================
+
+# ───────────────────────────── 数据库 ─────────────────────────────
+[database]
+# 类型：sqlite（默认）或 mysql
+type = "sqlite"
+
+# SQLite 专用：数据库文件路径
+sqlite_path = "data/wordle.db"
+
+# MySQL 专用（type = "mysql" 时生效）
+host = "127.0.0.1"
+port = 3306
+user = "root"
+password = ""
+db = "wordle"
+charset = "utf8mb4"
+
+
+# ─────────────────────────── 鉴权 / 管理员 ───────────────────────────
+[auth]
+# 是否开启全局 Token 鉴权；关闭后所有接口免 Token 访问
+enabled = true
+
+# 管理员 Token 的 SHA-256 摘要（hex 小写），用于 /api/admin/* 接口
+# 生成方式：echo -n "你的管理员Token" | sha256sum
+# 留空则管理员接口不可用，此处示例为test-admin
+admin_token_hash = "db09d473d4b6461b91bfa47e4fed3ef55e0234df4132ca7a827b0a69e8927cac"
+
+# 合法玩家 Token 摘要文件路径（每行一个 SHA-256）
+# 文件为空时自动关闭全局鉴权（即便 enabled=true）
+token_file = "token-sha256.txt"
+
+
+# ─────────────────────────── 游戏设置 ───────────────────────────
+# 三档难度参数：最大轮数、候选字数量、最大提示次数（提示次数 ≤ 5）
+[game.easy]
+max_rounds = 12
+candidate_count = 10
+max_hints = 2
+
+[game.medium]
+max_rounds = 10
+candidate_count = 14
+max_hints = 2
+
+[game.hard]
+max_rounds = 8
+candidate_count = 20
+max_hints = 2
+
+
+# ─────────────────────────── 成语库路径 ───────────────────────────
+[idiom_library]
+# 三档难度的成语库 JSON 路径（相对 backend/ 目录）
+easy = "data/easy.json"
+medium = "data/medium.json"
+hard = "data/hard.json"
+# 干扰字库
+characters = "data/character.json"
+
+
+# ─────────────────────────── 日志 ───────────────────────────
+[logging]
+# 日志级别：DEBUG / INFO / WARNING / ERROR
+level = "INFO"
+# 日志文件目录（相对 backend/）；留空 "" 则仅控制台输出
+dir = "logs"
+# 日志文件名
+filename = "app.log"
+# 按日期轮转保留的份数
+backup_count = 10
+
+
+# ─────────────────────────── 安全 ───────────────────────────
+[security]
+# CORS 允许的来源列表，["*"] 表示全部
+cors_origins = ["*"]
+
+# 可信任的代理来源 IP/CIDR 列表
+# 仅当请求直连 IP 命中此列表时，才采信 X-Forwarded-For / X-Real-IP 头获取客户端真实 IP
+# 默认仅信任本机；生产部署在反向代理后应加入代理服务器 IP。永远仅使用可信的代理服务器。
+trusted_proxies = ["127.0.0.1"]
+
+# 管理员接口（/api/admin/*）白名单 IP/CIDR
+# 为空列表时不做来源限制；设置后只有列表内 IP/CIDR 能访问管理员接口
+admin_allowlist = []

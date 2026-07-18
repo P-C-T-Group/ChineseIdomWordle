@@ -75,6 +75,28 @@ bash pullUpServer.sh
 启动后：
 - API 根地址：`http://127.0.0.1:8000`
 
+### 配置
+
+后端所有可配置项已统一到 `backend/config.toml`（TOML 格式）。首次使用请从模板复制：
+
+```bash
+cd backend
+cp config.example.toml config.toml
+```
+
+可配置项包括：
+
+| 分类 | 配置项 | 默认值 |
+|------|--------|--------|
+| **数据库** | 类型 / SQLite 路径 / MySQL 连接 | sqlite / `data/wordle.db` |
+| **鉴权** | 全局鉴权开关 / 管理员 Token 哈希 / 玩家 Token 文件 | 开启 / 空 / `token-sha256.txt` |
+| **游戏设置** | 三难度的最大轮数、候选字数、最大提示数（≤5） | 见模板 |
+| **成语库** | 难中易三档成语库路径、干扰字库路径 | `data/*.json` |
+| **日志** | 级别 / 目录 / 文件名 / 轮转份数 | INFO / `logs` / `app.log` / 10 |
+| **安全** | CORS 来源 / 可信代理 IP / 管理员白名单 IP | `["*"]` / `["127.0.0.1"]` / 不限制 |
+
+> 敏感项（数据库密码、管理员 Token 哈希等）也可通过环境变量覆盖，优先级高于 `config.toml`。支持的变量名见 `backend/.env.example`。
+
 ### 启动前端
 
 前端为纯静态页面，直接用浏览器打开 `client/index.html` 即可，或使用任意静态文件服务器：
@@ -89,8 +111,8 @@ python3 -m http.server 3000
 
 后端默认启用 Token 鉴权，合法 Token 的 SHA-256 摘要存储在 `backend/token-sha256.txt` 中（每行一个）。
 
-- **关闭鉴权**：清空 `token-sha256.txt` 文件内容（保留空文件），后端将自动关闭全局校验
-- **添加 Token**：计算 Token 的 SHA-256 摘要，追加到文件中，无需重启即可通过 `/api/admin/reloadTokens` 热加载
+- **关闭鉴权**：在 `config.toml` 中设置 `auth.enabled = false`，或清空 `token-sha256.txt` 文件内容（保留空文件），后端将自动关闭全局校验
+- **添加 Token**：计算 Token 的 SHA-256 摘要，追加到文件中，无需重启即可通过 `/api/admin/reload-token` 热加载
 
 前端默认使用 `test-token` 作为 Bearer Token，对应摘要已预置在文件中。
 
@@ -106,10 +128,14 @@ ChineseIdomWordle/
 │   │   ├── core/              # 核心数据模型与算法
 │   │   │   ├── models.py      # Pydantic 模型（Idiom, Game, CharFeedback）
 │   │   │   ├── feedback.py    # 猜测反馈算法（绿/黄/灰判定）
-│   │   │   └── candidate.py   # 候选字生成逻辑
+│   │   │   ├── candidate.py   # 候选字生成逻辑
+│   │   │   ├── config.py      # 统一配置加载器（TOML + 环境变量覆盖）
+│   │   │   ├── logging_setup.py # 日志配置（根据 config.toml 初始化）
+│   │   │   └── security.py    # 安全工具（IP/CIDR 校验、客户端 IP 解析）
 │   │   ├── schemas/           # 请求/响应 Schema
 │   │   │   ├── game.py        # 游戏信息数据模型/字典
-│   │   │   └── DB.py          # 数据库配置模型
+│   │   │   ├── config.py      # 统一配置 Schema（Pydantic 模型）
+│   │   │   └── DB.py          # 数据库配置模型（兼容导出）
 │   │   ├── services/          # 业务逻辑与路由
 │   │   │   ├── game_service.py # 游戏核心逻辑
 │   │   │   └── routes.py      # API 路由定义
@@ -120,7 +146,8 @@ ChineseIdomWordle/
 │   ├── tests/                 # 单元测试
 │   ├── logs/                  # 运行日志
 │   ├── requirements.txt       # 依赖列表
-│   ├── uvicorn_config.json    # 日志配置
+│   ├── config.example.toml    # 统一配置模板（TOML）
+│   ├── config.toml            # 实际配置（gitignore，需从模板复制）
 │   ├── token-sha256.txt       # 合法 Token 摘要
 │   └── pullUpServer.sh        # 一键启动脚本
 ├── client/                    # 前端（纯静态）

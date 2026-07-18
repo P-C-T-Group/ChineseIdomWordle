@@ -1,67 +1,36 @@
 """
 数据库管理器 - 抽象 SQLite 与 MySQL 差异，提供统一的游戏数据 CRUD 接口
 
-配置读取优先级（环境变量 DB_TYPE / DB_SQLITE_PATH / DB_HOST 等）：
-  - DB_TYPE=sqlite（默认）: 使用本地 SQLite 文件，DB_SQLITE_PATH 指定路径
-  - DB_TYPE=mysql: 使用 MySQL，需配置 DB_HOST / DB_PORT / DB_USER / DB_PASSWORD / DB_NAME
+配置来源：统一配置文件 config.toml（见 app.core.config），
+敏感项可由环境变量覆盖。
 """
 import json
 import logging
-import os
 import threading
 from typing import Optional
 
 from app.core.models import Game, CharFeedback, Difficulty, GameMode
-from app.schemas.DB import DBConnection, DatabaseType
+from app.core.config import get_settings
+from app.schemas.DB import DatabaseType
 
 log = logging.getLogger('uvicorn')
 
-# 全局配置实例
-_config: Optional[DBConnection] = None
 # SQLite 连接锁（SQLite 需要串行写入）
 _sqlite_lock = threading.Lock()
 
 
-def _load_config() -> DBConnection:
-    """从环境变量加载数据库配置"""
-    db_type = os.environ.get("DB_TYPE", "sqlite").lower()
-    if db_type == "mysql":
-        cfg = DBConnection(
-            enabled=True,
-            type=DatabaseType.mysql,
-            host=os.environ.get("DB_HOST", "127.0.0.1"),
-            port=int(os.environ.get("DB_PORT", "3306")),
-            user=os.environ.get("DB_USER", "root"),
-            password=os.environ.get("DB_PASSWORD", ""),
-            db=os.environ.get("DB_NAME", "wordle"),
-            charset=os.environ.get("DB_CHARSET", "utf8mb4"),
-        )
-    else:
-        cfg = DBConnection(
-            enabled=True,
-            type=DatabaseType.sqlite,
-            sqlite_path=os.environ.get("DB_SQLITE_PATH", "data/wordle.db"),
-        )
-    return cfg
-
-
-def get_config() -> DBConnection:
-    global _config
-    if _config is None:
-        _config = _load_config()
-    return _config
+def get_config():
+    """获取数据库配置（来自统一配置单例）"""
+    return get_settings().database
 
 
 def _get_sqlite_conn():
     """获取 SQLite 连接"""
     import sqlite3
     cfg = get_config()
-    db_path = cfg.sqlite_path
-    # 确保目录存在
-    db_dir = os.path.dirname(db_path)
-    if db_dir:
-        os.makedirs(db_dir, exist_ok=True)
-    conn = sqlite3.connect(db_path)
+    # 路径已由 Settings 统一解析为绝对路径，且父目录已自动创建
+    db_path = cfg.sqlite_path_resolved
+    conn = sqlite3.connect(str(db_path))
     conn.row_factory = sqlite3.Row
     return conn
 

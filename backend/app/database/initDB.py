@@ -49,7 +49,7 @@ def _init_sqlite():
 def _init_mysql():
     """初始化 MySQL 表结构"""
     import pymysql
-    from pymysql.err import ProgrammingError
+    from pymysql.err import ProgrammingError, OperationalError
 
     cfg = db_manager.get_config()
     conn = pymysql.connect(
@@ -84,17 +84,29 @@ def _init_mysql():
                 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
             """)
 
+            # 先查询已存在的索引，避免重复创建
+            cursor.execute("""
+                SELECT INDEX_NAME FROM information_schema.STATISTICS
+                WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'games'
+            """)
+            existing_indexes = {row[0] for row in cursor.fetchall()}
+
             # 索引列表
             index_sqls = [
-                "CREATE INDEX `GAME_CREATE_IP` ON `games` (`create_ip`)",
-                "CREATE INDEX `GAME_DIFFICULTY` ON `games` (`difficulty`)",
-                "CREATE INDEX `GAME_STATUS` ON `games` (`game_status`)",
+                ("GAME_CREATE_IP",  "CREATE INDEX `GAME_CREATE_IP` ON `games` (`create_ip`)"),
+                ("GAME_DIFFICULTY", "CREATE INDEX `GAME_DIFFICULTY` ON `games` (`difficulty`)"),
+                ("GAME_STATUS",     "CREATE INDEX `GAME_STATUS` ON `games` (`game_status`)"),
             ]
-            for sql in index_sqls:
+            for idx_name, sql in index_sqls:
+                if idx_name in existing_indexes:
+                    log.debug(f"[DB] 索引 {idx_name} 已存在，跳过创建")
+                    continue
                 try:
                     cursor.execute(sql)
-                except ProgrammingError as e:
+                except (ProgrammingError, OperationalError) as e:
+                    # 1061 = Duplicate key name，兼容旧版本数据库
                     if e.args[0] == 1061:
+                        log.debug(f"[DB] 索引 {idx_name} 已存在（跳过）")
                         continue
                     raise
 

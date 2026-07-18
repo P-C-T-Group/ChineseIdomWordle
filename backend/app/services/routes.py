@@ -16,31 +16,16 @@ from app.services.game_service import (
     ensure_game,
     reveal_game
 )
+from app.core.security import get_client_ip
 
 
 router = APIRouter(prefix="/api")
 
 
-def _get_client_ip(request: Request) -> str:
-    """从请求中提取客户端真实 IP，支持反向代理场景"""
-    # 优先使用 X-Forwarded-For（多级代理时取第一个）
-    xff = request.headers.get("X-Forwarded-For")
-    if xff:
-        return xff.split(",")[0].strip()
-    # 其次使用 X-Real-IP
-    xri = request.headers.get("X-Real-IP")
-    if xri:
-        return xri.strip()
-    # 回退到直连 IP
-    if request.client:
-        return request.client.host
-    return "0.0.0.0"
-
-
 @router.post("/games", response_model=CreateGameResponse)
 # 创建新游戏
 def api_create_game(req: CreateGameRequest, request: Request, response: Response):
-    client_ip = _get_client_ip(request)
+    client_ip = get_client_ip(request)
     game = create_game(req.mode, req.difficulty, client_ip)
     return CreateGameResponse(
         game_id=game.game_id,
@@ -112,7 +97,8 @@ def api_get_game(game_id: str, response: Response):
         answer = game.target_idiom
         pinyin = game.target_pinyin
         explanation = game.target_explanation
-    if game.hints_used >= 2:
+    # 第二次提示后返回释义；max_hints=1 时第一次提示即返回释义
+    if game.hints_used >= 2 or (game.max_hints == 1 and game.hints_used >= 1):
         explanation = game.target_explanation
 
     return GameStateResponse(

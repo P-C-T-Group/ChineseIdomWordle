@@ -1,21 +1,12 @@
-from enum import Enum
-from pydantic import BaseModel
+"""
+数据库相关 Schema
 
+DatabaseType 与 DatabaseConfig 已迁移到 app.schemas.config，
+此处仅为向后兼容重新导出，避免已有导入路径失效。
+"""
+from app.schemas.config import DatabaseType, DatabaseConfig
 
-class DatabaseType(str, Enum):
-    sqlite = "sqlite"
-    mysql = "mysql"
+# 兼容旧名：db_manager / initDB 历史上使用 DBConnection
+DBConnection = DatabaseConfig
 
-
-class DBConnection(BaseModel):
-    enabled: bool = False
-    type: DatabaseType = DatabaseType.sqlite
-    # SQLite 配置
-    sqlite_path: str = "data/wordle.db"
-    # MySQL 配置
-    host: str = "127.0.0.1"
-    port: int = 3306
-    user: str = "root"
-    password: str = ""
-    db: str = "wordle"
-    charset: str = "utf8mb4"
+__all__ = ["DatabaseType", "DatabaseConfig", "DBConnection"]
