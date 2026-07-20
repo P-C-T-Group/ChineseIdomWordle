@@ -47,6 +47,52 @@ def _init_sqlite():
                 last_call_time TIMESTAMP NULL DEFAULT NULL
             );
             CREATE INDEX IF NOT EXISTS idx_tokens_sha ON tokens(sha256hash);
+
+            -- 排行榜：用户存档表
+            -- 每个终端（cookie_token）一条记录，user_id 为可展示的唯一标识
+            -- 各难度统计列：total（总局数）/ won（胜利数）/ win_rounds（取胜总回合数）
+            CREATE TABLE IF NOT EXISTS top_user (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id TEXT UNIQUE NOT NULL,
+                username TEXT NOT NULL DEFAULT '',
+                cookie_token TEXT UNIQUE NOT NULL,
+                ip_location TEXT NOT NULL DEFAULT '',
+                create_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                update_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                easy_total INTEGER NOT NULL DEFAULT 0,
+                easy_won INTEGER NOT NULL DEFAULT 0,
+                easy_win_rounds INTEGER NOT NULL DEFAULT 0,
+                medium_total INTEGER NOT NULL DEFAULT 0,
+                medium_won INTEGER NOT NULL DEFAULT 0,
+                medium_win_rounds INTEGER NOT NULL DEFAULT 0,
+                hard_total INTEGER NOT NULL DEFAULT 0,
+                hard_won INTEGER NOT NULL DEFAULT 0,
+                hard_win_rounds INTEGER NOT NULL DEFAULT 0
+            );
+            CREATE INDEX IF NOT EXISTS idx_top_user_cookie ON top_user(cookie_token);
+
+            -- 排行榜：每日挑战对局明细表
+            -- 记录已上传的每局对局，用于追加合并与去重
+            CREATE TABLE IF NOT EXISTS top_daily (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id TEXT NOT NULL,
+                game_id TEXT NOT NULL DEFAULT '',
+                difficulty TEXT NOT NULL,
+                mode TEXT NOT NULL DEFAULT 'unlimited',
+                won INTEGER NOT NULL DEFAULT 0,
+                rounds INTEGER NOT NULL DEFAULT 0,
+                play_date TEXT NOT NULL DEFAULT '',
+                create_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                UNIQUE(user_id, game_id)
+            );
+            CREATE INDEX IF NOT EXISTS idx_top_daily_user ON top_daily(user_id);
+            CREATE INDEX IF NOT EXISTS idx_top_daily_diff ON top_daily(difficulty);
+
+            -- 排行榜：被管理员吊销的 cookie 列表（使终端 cookie 失效）
+            CREATE TABLE IF NOT EXISTS lb_revoked_cookies (
+                cookie_token TEXT PRIMARY KEY,
+                revoke_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            );
         """)
         conn.commit()
         log.info("[DB] SQLite 数据库初始化成功")
@@ -142,6 +188,71 @@ def _init_mysql():
                     pass
                 else:
                     raise
+
+            # 创建排行榜用户存档表 top_user
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS `top_user` (
+                    `id` INT AUTO_INCREMENT PRIMARY KEY,
+                    `user_id` varchar(32) NOT NULL UNIQUE,
+                    `username` varchar(64) NOT NULL DEFAULT '',
+                    `cookie_token` varchar(128) NOT NULL UNIQUE,
+                    `ip_location` varchar(255) NOT NULL DEFAULT '',
+                    `create_time` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                    `update_time` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                    `easy_total` INT NOT NULL DEFAULT 0,
+                    `easy_won` INT NOT NULL DEFAULT 0,
+                    `easy_win_rounds` INT NOT NULL DEFAULT 0,
+                    `medium_total` INT NOT NULL DEFAULT 0,
+                    `medium_won` INT NOT NULL DEFAULT 0,
+                    `medium_win_rounds` INT NOT NULL DEFAULT 0,
+                    `hard_total` INT NOT NULL DEFAULT 0,
+                    `hard_won` INT NOT NULL DEFAULT 0,
+                    `hard_win_rounds` INT NOT NULL DEFAULT 0
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+            """)
+            try:
+                cursor.execute("CREATE INDEX `TOP_USER_COOKIE` ON `top_user` (`cookie_token`)")
+            except (ProgrammingError, OperationalError) as e:
+                if getattr(e, 'args', None) and e.args[0] == 1061:
+                    pass
+                else:
+                    raise
+
+            # 创建排行榜每日挑战明细表 top_daily
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS `top_daily` (
+                    `id` INT AUTO_INCREMENT PRIMARY KEY,
+                    `user_id` varchar(32) NOT NULL,
+                    `game_id` varchar(64) NOT NULL DEFAULT '',
+                    `difficulty` enum('easy', 'medium', 'hard') NOT NULL,
+                    `mode` enum('daily', 'unlimited') NOT NULL DEFAULT 'unlimited',
+                    `won` TINYINT(1) NOT NULL DEFAULT 0,
+                    `rounds` INT NOT NULL DEFAULT 0,
+                    `play_date` varchar(10) NOT NULL DEFAULT '',
+                    `create_time` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                    UNIQUE KEY `uniq_user_game` (`user_id`, `game_id`)
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+            """)
+            for idx_name, sql in [
+                ("TOP_DAILY_USER", "CREATE INDEX `TOP_DAILY_USER` ON `top_daily` (`user_id`)"),
+                ("TOP_DAILY_DIFF", "CREATE INDEX `TOP_DAILY_DIFF` ON `top_daily` (`difficulty`)"),
+            ]:
+                if idx_name in existing_indexes:
+                    continue
+                try:
+                    cursor.execute(sql)
+                except (ProgrammingError, OperationalError) as e:
+                    if getattr(e, 'args', None) and e.args[0] == 1061:
+                        continue
+                    raise
+
+            # 创建被吊销 cookie 表 lb_revoked_cookies
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS `lb_revoked_cookies` (
+                    `cookie_token` varchar(128) PRIMARY KEY,
+                    `revoke_time` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+            """)
 
         conn.commit()
         log.info("[DB] MySQL 数据库初始化成功")

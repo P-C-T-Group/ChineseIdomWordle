@@ -6,6 +6,7 @@ EnterGate of ChineseIdomWordle backend (FastAPI)
 CODEOWNERS: @GZYZhy
 '''
 
+import asyncio
 from fastapi import FastAPI, Response, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
@@ -55,12 +56,50 @@ try:
     try:
         cleanup_cfg = settings.cleanup
         if cleanup_cfg.enabled and cleanup_cfg.run_on_startup:
-            db_manager.clean_old_games(cleanup_cfg.retention_days, cleanup_cfg.mode)
+            db_manager.clean_old_games(
+                cleanup_cfg.retention_days, cleanup_cfg.mode)
     except Exception:
         pass
 except Exception as e:
+    db_type = settings.database.type.value
+    err_msg = str(e)
+
+    # 美观的错误输出
+    border = "═" * 60
+    print(f"\n{RED}╔{border}╗")
+    print(f"║{RESET}  {RED}❌ 数据库初始化失败 - 服务无法启动{RESET}")
+    print(f"{RED}╠{border}╣")
+    print(f"{RED}║{RESET}  数据库类型: {db_type.upper()}")
+
+    if db_type == "mysql":
+        print(
+            f"{RED}║{RESET}  连接地址:   {settings.database.host}:{settings.database.port}")
+        print(f"{RED}║{RESET}  数据库名:   {settings.database.db}")
+        print(f"{RED}║{RESET}  用户名:     {settings.database.user}")
+
+        if "Connection refused" in err_msg:
+            print(f"{RED}╠{border}╣")
+            print(f"{RED}║{RESET}  💡 可能原因:")
+            print(f"{RED}║{RESET}     1. MySQL 服务未启动，请先启动 MySQL")
+            print(f"{RED}║{RESET}     2. 端口 {settings.database.port} 不正确")
+            print(f"{RED}║{RESET}     3. 防火墙阻止了连接")
+        elif "Access denied" in err_msg:
+            print(f"{RED}╠{border}╣")
+            print(f"{RED}║{RESET}  💡 可能原因:")
+            print(f"{RED}║{RESET}     1. 用户名或密码错误")
+            print(f"{RED}║{RESET}     2. 用户没有访问该数据库的权限")
+        elif "Unknown database" in err_msg:
+            print(f"{RED}╠{border}╣")
+            print(f"{RED}║{RESET}  💡 可能原因:")
+            print(f"{RED}║{RESET}     数据库 '{settings.database.db}' 不存在，请先创建")
+
+    print(f"{RED}╠{border}╣")
+    print(
+        f"{RED}║{RESET}  错误详情: {err_msg[:100]}{'...' if len(err_msg) > 100 else ''}")
+    print(f"{RED}╚{border}╝{RESET}\n")
+
     log.critical(f"[DB] 数据库初始化失败，服务无法启动: {e}")
-    raise RuntimeError(f"数据库初始化失败，请检查数据库配置与连接: {e}") from e
+    raise SystemExit(1) from e
 
 app = FastAPI(title="IdomWordle API")
 
@@ -69,8 +108,8 @@ app.include_router(router)
 # 后台定期清理：过期 token + 过期对局（自动化垃圾回收）
 # 默认每小时执行一次；使用 asyncio 后台任务，保证过期数据不会长期积累。
 # 清理间隔与对局清理策略来自配置文件 cleanup 节，支持热重载。
-import asyncio
 _cleanup_task = None
+
 
 async def _periodic_clean_loop():
     """后台循环：定时清理过期 token，并按配置清理过期对局。"""
@@ -82,7 +121,8 @@ async def _periodic_clean_loop():
                 # 2) 过期对局清理（受配置开关控制）
                 cleanup_cfg = get_settings().cleanup
                 if cleanup_cfg.enabled:
-                    db_manager.clean_old_games(cleanup_cfg.retention_days, cleanup_cfg.mode)
+                    db_manager.clean_old_games(
+                        cleanup_cfg.retention_days, cleanup_cfg.mode)
             except Exception:
                 # 忽略清理错误，避免任务退出
                 pass
@@ -92,12 +132,14 @@ async def _periodic_clean_loop():
     except asyncio.CancelledError:
         return
 
+
 @app.on_event("startup")
 async def _start_cleanup_task():
     global _cleanup_task
     # 启动后台清理任务（不阻塞启动）
     loop = asyncio.get_running_loop()
     _cleanup_task = loop.create_task(_periodic_clean_loop())
+
 
 @app.on_event("shutdown")
 async def _stop_cleanup_task():
@@ -131,8 +173,11 @@ async def bearer_auth_middleware(request: Request, call_next):
     以支持通过 /api/admin/config/reload 热更新。
     """
     current_path = request.url.path
-    # 根路径（健康检查）及文档端点免 Token
-    if current_path in ("/", "/docs", "/redoc", "/openapi.json"):
+    # 仅对 /api/ 开头的路径进行鉴权，其他路径（静态资源、SPA 路由、文档等）直接放行
+    if not current_path.startswith("/api/") and current_path != "/api":
+        return await call_next(request)
+    # 文档端点免 Token
+    if current_path in ("/api/docs", "/api/redoc", "/api/openapi.json", "/docs", "/redoc", "/openapi.json"):
         return await call_next(request)
 
     # 放行所有 OPTIONS 跨域预检请求
@@ -182,12 +227,15 @@ async def bearer_auth_middleware(request: Request, call_next):
     if whitelist:
         client_ip = get_client_ip(request)
         if not _ip_in_list(client_ip, whitelist):
-            err = ErrorResponse(code=403, status="fail", message="Token 不在允许的来源 IP 列表中")
+            err = ErrorResponse(code=403, status="fail",
+                                message="Token 不在允许的来源 IP 列表中")
             return JSONResponse(status_code=403, content=err.model_dump())
 
     # 更新 last_call_time（忽略错误）
     try:
-        db_manager.update_last_call_time(token_row.get("id"))
+        token_id = token_row.get("id")
+        if isinstance(token_id, int):
+            db_manager.update_last_call_time(token_id)
     except Exception:
         pass
 
@@ -218,10 +266,16 @@ app.add_middleware(
 
 
 @app.get("/")
-def read_root(response: Response):
+def read_root(response: Response, request: Request):
     """
-    根路径 - API 入口信息
+    根路径 - 自动检测：如果存在前端 index.html 则返回前端，否则返回 API 信息
     """
+    from pathlib import Path
+    from fastapi.responses import FileResponse
+    client_index = Path(__file__).resolve(
+    ).parent.parent.parent / "client" / "index.html"
+    if client_index.exists():
+        return FileResponse(str(client_index))
     result = {
         "code": 200,
         "status": "success",
@@ -229,8 +283,6 @@ def read_root(response: Response):
     }
     response.headers["X-Server-Health"] = "OK"
     return result
-
-
 
 
 @app.exception_handler(StarletteHTTPException)
