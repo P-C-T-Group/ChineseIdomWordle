@@ -232,7 +232,24 @@ def add_front_token_to_db(token: str):
 
     # 确保数据库已初始化
     from app.database.initDB import initDB
-    initDB()
+    from app.database.errors import Colors, print_database_error
+
+    try:
+        initDB()
+    except SystemExit:
+        # initDB 中的错误处理已经退出，直接传递
+        raise
+    except Exception as e:
+        err_str = str(type(e)).lower()
+        if 'mysql' in err_str or 'sqlite' in err_str or 'pymysql' in err_str:
+            # 错误已经在底层被美化打印，这里只给出总结
+            print(
+                f"\n  {Colors.RED}{Colors.BOLD}✗ 数据库初始化失败，无法继续执行{Colors.RESET}")
+            print(f"  {Colors.YELLOW}💡 请根据上方错误提示修复数据库配置后重新运行{Colors.RESET}")
+            print(
+                f"  {Colors.CYAN}📝 配置文件位置: config.toml 的 [database] 部分{Colors.RESET}")
+            sys.exit(1)
+        raise
 
     from app.database import db_manager
     from app.core.config import get_settings

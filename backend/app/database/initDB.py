@@ -11,7 +11,18 @@ log = logging.getLogger('uvicorn')
 
 def _init_sqlite():
     """初始化 SQLite 表结构"""
-    conn = db_manager._get_sqlite_conn()
+    from app.database.errors import print_database_error
+
+    cfg = db_manager.get_config()
+    db_path = getattr(cfg, 'sqlite_path_resolved', 'unknown')
+    db_context = {"db": str(db_path)}
+
+    try:
+        conn = db_manager._get_sqlite_conn()
+    except Exception as err:
+        print_database_error(err, "sqlite", db_context, exit_program=False)
+        raise
+
     try:
         conn.executescript("""
             CREATE TABLE IF NOT EXISTS games (
@@ -110,6 +121,7 @@ def _init_sqlite():
     except Exception as err:
         conn.rollback()
         log.error(f"[DB] SQLite 数据库初始化失败: {err}")
+        print_database_error(err, "sqlite", db_context, exit_program=False)
         raise
     finally:
         conn.close()
@@ -119,16 +131,31 @@ def _init_mysql():
     """初始化 MySQL 表结构"""
     import pymysql
     from pymysql.err import ProgrammingError, OperationalError
+    from app.database.errors import print_database_error
 
     cfg = db_manager.get_config()
-    conn = pymysql.connect(
-        host=cfg.host,
-        port=cfg.port,
-        user=cfg.user,
-        password=cfg.password,
-        database=cfg.db,
-        charset=cfg.charset,
-    )
+
+    # 构建数据库连接上下文（用于错误提示）
+    db_context = {
+        "host": cfg.host,
+        "port": cfg.port,
+        "user": cfg.user,
+        "db": cfg.db,
+        "charset": cfg.charset,
+    }
+
+    try:
+        conn = pymysql.connect(
+            host=cfg.host,
+            port=cfg.port,
+            user=cfg.user,
+            password=cfg.password,
+            database=cfg.db,
+            charset=cfg.charset,
+        )
+    except (ProgrammingError, OperationalError, pymysql.Error) as err:
+        print_database_error(err, "mysql", db_context, exit_program=False)
+        raise
     try:
         with conn.cursor() as cursor:
             # 创建游戏表
@@ -293,6 +320,10 @@ def _init_mysql():
 
         conn.commit()
         log.info("[DB] MySQL 数据库初始化成功")
+
+        # 初始化完成后执行 schema 升级检查（处理旧版本表结构）
+        from app.database.db_manager import _ensure_mysql_schema
+        _ensure_mysql_schema(conn)
     except Exception as err:
         conn.rollback()
         log.error(f"[DB] MySQL 数据库初始化失败: {err}")
@@ -303,8 +334,28 @@ def _init_mysql():
 
 def initDB():
     """根据配置初始化数据库"""
+    from app.database.errors import print_database_error
+
     cfg = db_manager.get_config()
-    if cfg.type == DatabaseType.mysql:
-        _init_mysql()
-    else:
-        _init_sqlite()
+    db_context = {
+        "host": getattr(cfg, 'host', 'N/A'),
+        "port": getattr(cfg, 'port', 'N/A'),
+        "user": getattr(cfg, 'user', 'N/A'),
+        "db": getattr(cfg, 'db', getattr(cfg, 'sqlite_path_resolved', 'N/A')),
+    }
+
+    try:
+        if cfg.type == DatabaseType.mysql:
+            print(
+                f"\n[DB] 正在连接 MySQL 数据库: {cfg.user}@{cfg.host}:{cfg.port}/{cfg.db}")
+            _init_mysql()
+        else:
+            db_path = getattr(cfg, 'sqlite_path_resolved', 'unknown')
+            print(f"\n[DB] 正在初始化 SQLite 数据库: {db_path}")
+            _init_sqlite()
+    except Exception as err:
+        err_str = str(type(err)).lower()
+        if 'sqlite' in err_str or 'mysql' in err_str or 'pymysql' in err_str:
+            db_type = "mysql" if cfg.type == DatabaseType.mysql else "sqlite"
+            print_database_error(err, db_type, db_context, exit_program=False)
+        raise

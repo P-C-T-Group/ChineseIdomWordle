@@ -21,6 +21,38 @@ log = logging.getLogger('uvicorn')
 
 # SQLite 连接锁（SQLite 需要串行写入）
 _sqlite_lock = threading.Lock()
+# MySQL 迁移检查标志（确保只执行一次）
+_mysql_migrated = False
+
+
+def _ensure_mysql_schema(conn):
+    """检查并自动修复 MySQL 表结构（添加缺失字段）"""
+    global _mysql_migrated
+    if _mysql_migrated:
+        return
+
+    try:
+        with conn.cursor() as cursor:
+            # 检查表是否存在
+            cursor.execute("SHOW TABLES LIKE 'top_daily'")
+            table_exists = cursor.fetchone() is not None
+
+            if table_exists:
+                # 检查 top_daily 表是否有 won 字段
+                cursor.execute("SHOW COLUMNS FROM top_daily LIKE 'won'")
+                if cursor.fetchone() is None:
+                    log.warning("[DB] 检测到 top_daily 表缺少 won 字段，正在自动添加...")
+                    cursor.execute(
+                        "ALTER TABLE top_daily ADD COLUMN `won` TINYINT(1) NOT NULL DEFAULT 0 AFTER `mode`"
+                    )
+                    log.info("[DB] top_daily.won 字段添加成功")
+                conn.commit()
+                _mysql_migrated = True
+            else:
+                log.debug("[DB] top_daily 表不存在，跳过 schema 迁移检查")
+    except Exception as e:
+        log.error(f"[DB] MySQL schema 迁移检查失败: {e}")
+        # 出错时不设置 _mysql_migrated，下次继续重试
 
 
 def get_config():
@@ -31,27 +63,50 @@ def get_config():
 def _get_sqlite_conn():
     """获取 SQLite 连接"""
     import sqlite3
+    from app.database.errors import print_database_error
+
     cfg = get_config()
     # 路径已由 Settings 统一解析为绝对路径，且父目录已自动创建
     db_path = cfg.sqlite_path_resolved
-    conn = sqlite3.connect(str(db_path))
-    conn.row_factory = sqlite3.Row
-    return conn
+
+    try:
+        conn = sqlite3.connect(str(db_path))
+        conn.row_factory = sqlite3.Row
+        return conn
+    except sqlite3.Error as err:
+        db_context = {"db": str(db_path)}
+        print_database_error(err, "sqlite", db_context, exit_program=False)
+        raise
 
 
 def _get_mysql_conn():
     """获取 MySQL 连接"""
     import pymysql
+    from app.database.errors import print_database_error
+
     cfg = get_config()
-    return pymysql.connect(
-        host=cfg.host,
-        port=cfg.port,
-        user=cfg.user,
-        password=cfg.password,
-        database=cfg.db,
-        charset=cfg.charset,
-        cursorclass=pymysql.cursors.DictCursor,
-    )
+    db_context = {
+        "host": cfg.host,
+        "port": cfg.port,
+        "user": cfg.user,
+        "db": cfg.db,
+    }
+
+    try:
+        conn = pymysql.connect(
+            host=cfg.host,
+            port=cfg.port,
+            user=cfg.user,
+            password=cfg.password,
+            database=cfg.db,
+            charset=cfg.charset,
+            cursorclass=pymysql.cursors.DictCursor,
+        )
+        _ensure_mysql_schema(conn)
+        return conn
+    except pymysql.Error as err:
+        print_database_error(err, "mysql", db_context, exit_program=False)
+        raise
 
 
 def _get_conn():

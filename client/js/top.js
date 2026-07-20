@@ -99,8 +99,13 @@ async function apiFetch(url, options = {}) {
         }
     }
     
-    if (!resp.ok || (data.code && data.code >= 400)) {
-        throw new Error(data.detail || data.message || `请求失败 (${resp.status})`);
+    // HTTP状态码错误 或 业务错误码
+    if (!resp.ok) {
+        const errorMsg = data.detail || data.message || data.error || `HTTP ${resp.status}`;
+        throw new Error(errorMsg);
+    }
+    if (data.code && data.code >= 400) {
+        throw new Error(data.detail || data.message || '请求失败');
     }
     return data;
 }
