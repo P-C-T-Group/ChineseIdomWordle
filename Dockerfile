@@ -88,16 +88,23 @@ RUN echo "=== 安装 Node.js 依赖（javascript-obfuscator） ===" \
 RUN mkdir -p /app/defaults/config \
     /app/defaults/data \
     /app/defaults/client \
-    # 保存默认 config.toml（始终使用 example 模板，避免打包本地敏感配置）
-    && cp /app/config.example.toml /app/defaults/config/config.toml \
-    # 将 example 配置也作为容器内的初始 config.toml
-    && cp /app/config.example.toml /app/config.toml \
-    # Docker 环境下必须监听 0.0.0.0 才能被外部访问
-    && sed -i 's/listen_host\s*=\s*"127\.0\.0\.1"/listen_host = "0.0.0.0"/' /app/defaults/config/config.toml \
-    && sed -i 's/listen_host\s*=\s*"127\.0\.0\.1"/listen_host = "0.0.0.0"/' /app/config.toml \
-    # 默认使用 SQLite 而非本地 MySQL
-    && sed -i 's/type\s*=\s*"mysql"/type = "sqlite"/' /app/defaults/config/config.toml \
-    && sed -i 's/type\s*=\s*"mysql"/type = "sqlite"/' /app/config.toml \
+    # 使用 Python 脚本修改配置（更可靠，避免 sed 转义问题）
+    && python3 -c "
+import re
+for path in ['/app/defaults/config/config.toml', '/app/config.toml']:
+    # 复制 example 配置
+    import shutil
+    shutil.copy('/app/config.example.toml', path)
+    with open(path, 'r') as f:
+        content = f.read()
+    # Docker 环境监听 0.0.0.0
+    content = re.sub(r'listen_host\s*=\s*\"127\.0\.0\.1\"', 'listen_host = \"0.0.0.0\"', content)
+    # 默认使用 SQLite
+    content = re.sub(r'^type\s*=\s*\"mysql\"', 'type = \"sqlite\"', content, flags=re.MULTILINE)
+    with open(path, 'w') as f:
+        f.write(content)
+print('配置文件已处理')
+" \
     # 保存默认 data 目录内容
     && cp -r /app/data/* /app/defaults/data/ \
     # 保存默认 client 目录内容
