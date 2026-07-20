@@ -42,27 +42,33 @@ echo "============================================================"
 CONFIG_FILE="$APP_DIR/config.toml"
 DEFAULT_CONFIG="$DEFAULTS_DIR/config/config.toml"
 
+# 处理 Docker 常见问题：宿主机文件不存在时 Docker 会创建同名目录
+if [ -d "$CONFIG_FILE" ] && [ ! -f "$CONFIG_FILE" ]; then
+    log_warn "检测到 config.toml 是一个目录（Docker 挂载空文件时的默认行为），正在删除..."
+    rm -rf "$CONFIG_FILE"
+fi
+
 if [ ! -f "$CONFIG_FILE" ]; then
     log_warn "未找到 config.toml，正在复制默认配置文件..."
     cp "$DEFAULT_CONFIG" "$CONFIG_FILE"
     log_success "默认配置文件已复制到 $CONFIG_FILE"
-    log_warn "提示: 建议将 config.toml 挂载到宿主机进行自定义配置"
+    log_warn "提示: 配置文件已在容器内创建，如需持久化请将其挂载到宿主机"
 else
     log_info "检测到已挂载的 config.toml"
-    
-    # 检查 listen_host 配置（Docker 中必须监听 0.0.0.0）
-    if grep -q 'listen_host\s*=\s*"127\.0\.0\.1"' "$CONFIG_FILE"; then
-        log_warn "⚠️  检测到 listen_host 配置为 127.0.0.1，Docker 环境中外部将无法访问！"
-        log_warn "    正在自动修正为 0.0.0.0..."
-        sed -i 's/listen_host\s*=\s*"127\.0\.0\.1"/listen_host = "0.0.0.0"/' "$CONFIG_FILE"
-        log_success "已修正 listen_host 为 0.0.0.0"
-    fi
-    
-    # 检查数据库类型（如果是 MySQL 但地址是 127.0.0.1，给出提示）
-    if grep -q 'type\s*=\s*"mysql"' "$CONFIG_FILE" && grep -q 'host\s*=\s*"127\.0\.0\.1"' "$CONFIG_FILE"; then
-        log_warn "⚠️  检测到 MySQL 配置指向 127.0.0.1，Docker 内这将无法访问宿主机或外部 MySQL"
-        log_warn "    如需使用 MySQL，请配置正确的主机地址（如使用 docker-compose 中的服务名 mysql）"
-    fi
+fi
+
+# 检查 listen_host 配置（Docker 中必须监听 0.0.0.0）
+if grep -q 'listen_host\s*=\s*"127\.0\.0\.1"' "$CONFIG_FILE"; then
+    log_warn "⚠️  检测到 listen_host 配置为 127.0.0.1，Docker 环境中外部将无法访问！"
+    log_warn "    正在自动修正为 0.0.0.0..."
+    sed -i 's/listen_host\s*=\s*"127\.0\.0\.1"/listen_host = "0.0.0.0"/' "$CONFIG_FILE"
+    log_success "已修正 listen_host 为 0.0.0.0"
+fi
+
+# 检查数据库类型（如果是 MySQL 但地址是 127.0.0.1，给出提示）
+if grep -q 'type\s*=\s*"mysql"' "$CONFIG_FILE" && grep -q 'host\s*=\s*"127\.0\.0\.1"' "$CONFIG_FILE"; then
+    log_warn "⚠️  检测到 MySQL 配置指向 127.0.0.1，Docker 内这将无法访问宿主机或外部 MySQL"
+    log_warn "    如需使用 MySQL，请配置正确的主机地址（如使用 docker-compose 中的服务名 mysql）"
 fi
 
 # ---------------------------------------------------------------------------
