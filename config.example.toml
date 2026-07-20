@@ -54,7 +54,7 @@ max_hints = 2
 
 # ─────────────────────────── 成语库路径 ───────────────────────────
 [idiom_library]
-# 三档难度的成语库 JSON 路径（相对 backend/ 目录）
+# 三档难度的成语库 JSON 路径
 easy = "data/easy.json"
 medium = "data/medium.json"
 hard = "data/hard.json"
@@ -66,7 +66,7 @@ characters = "data/character.json"
 [logging]
 # 日志级别：DEBUG / INFO / WARNING / ERROR
 level = "INFO"
-# 日志文件目录（相对 backend/）；留空 "" 则仅控制台输出
+# 日志文件目录；留空 "" 则仅控制台输出
 dir = "logs"
 # 日志文件名
 filename = "app.log"

@@ -1,0 +1,78 @@
+# =============================================================================
+# Docker 构建忽略文件
+# =============================================================================
+
+# Git
+.git
+.gitignore
+.github
+
+# Python
+__pycache__
+*.py[cod]
+*$py.class
+*.so
+.Python
+*.egg-info/
+*.egg
+dist/
+build/
+.eggs/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# 虚拟环境
+venv/
+env/
+ENV/
+.venv/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# 日志
+logs/
+*.log
+backend/logs/
+
+# 本地配置（使用 config.example.toml 作为模板）
+# 注意：不要忽略 config.toml，因为首次构建需要它作为默认配置
+# 如果本地 config.toml 包含敏感信息，请自行注意
+# config.toml
+
+# 数据库文件（运行时挂载）
+data/*.db
+data/*.db-journal
+data/wordle.db
+
+# Node.js (本地依赖不复制进镜像，构建时安装)
+tool/node_modules/
+node_modules/
+
+# 文档
+docs/
+*.md
+!README.md
+
+# Docker 自身
+Dockerfile
+docker-compose.yml
+.dockerignore
+
+# 备份文件
+*.backup
+
+# 测试
+backend/tests/
+.pytest_cache/
+
+# 临时文件
+tmp/
+temp/
+*.tmp
