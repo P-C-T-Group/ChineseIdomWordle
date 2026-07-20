@@ -10,12 +10,13 @@
 """
 from enum import Enum
 from pathlib import Path
-from typing import Optional
+
+# from typing import Optional
 
 from pydantic import BaseModel, Field, field_validator, model_validator
 
 # backend/ 目录的绝对路径（本文件位于 backend/app/schemas/config.py，向上两级）
-_BACKEND_DIR = Path(__file__).resolve().parent.parent.parent
+_BACKEND_DIR = Path(__file__).resolve().parent.parent.parent.parent
 
 
 def _resolve_to_backend(path_str: str) -> Path:
@@ -193,10 +194,82 @@ class CleanupConfig(BaseModel):
     - run_on_startup: 是否在服务启动时执行一次清理
     """
     enabled: bool = True
-    retention_days: int = Field(30, ge=1, le=3650, description="清理天数前创建的对局")
+    retention_days: int = Field(
+        default=30, ge=1, le=3650, description="清理天数前创建的对局")
     mode: CleanupMode = CleanupMode.non_playing
-    interval_seconds: int = Field(3600, ge=60, le=86400, description="后台清理间隔（秒）")
+    interval_seconds: int = Field(
+        default=3600, ge=60, le=86400, description="后台清理间隔（秒）")
     run_on_startup: bool = True
+
+
+# ─── 排行榜 ───
+
+class LeaderboardConfig(BaseModel):
+    """排行榜配置
+
+    - min_games_to_upload: 允许上传排行榜的最低对局数（不论 daily/unlimited）
+    - min_new_records_to_append: 追加战绩时至少需要的新记录数
+    - inactive_days: 多少天未更新的存档将被自动清理
+    - top_display_limit: 前端展示的名次上限（前 N 名）
+    - cookie_name: 用于区分终端的 Cookie 名称
+    - cookie_max_age_days: Cookie 有效期（天）
+    """
+    min_games_to_upload: int = Field(
+        default=20, ge=1, le=10000, description="允许上传排行榜的最低对局数")
+    min_new_records_to_append: int = Field(
+        default=5, ge=1, le=1000, description="追加战绩时至少需要的新记录数")
+    inactive_days: int = Field(
+        default=90, ge=1, le=3650, description="不活跃存档清理天数")
+    top_display_limit: int = Field(
+        default=100, ge=1, le=500, description="前端展示的名次上限")
+    cookie_name: str = "cw_lb_token"
+    cookie_max_age_days: int = Field(
+        default=365, ge=1, le=3650, description="Cookie 有效期（天）")
+
+
+# ─── 前端配置 ───
+
+class FrontMode(str, Enum):
+    """前端启动模式"""
+    default = "default"  # 静态服务器 + API 代理（同域部署）
+    backend = "backend"  # 仅启动后端 API，不提供静态文件服务
+
+
+class FrontendConfig(BaseModel):
+    """前端服务配置
+
+    - listen_host: 监听地址，格式为 "host" 或 "host:port"（默认端口 8000）
+    - front_mode: 启动模式，default 或 backend
+    - front_token: 前端 JS 中硬编码的 API Token
+    """
+    listen_host: str = "127.0.0.1"
+    front_mode: FrontMode = FrontMode.default
+    front_token: str = "test-token"
+
+    @property
+    def host(self) -> str:
+        """解析获取主机名"""
+        return self.listen_host.split(":")[0] if ":" in self.listen_host else self.listen_host
+
+    @property
+    def port(self) -> int:
+        """解析获取端口号，默认 8000"""
+        if ":" in self.listen_host:
+            try:
+                return int(self.listen_host.split(":")[1])
+            except (ValueError, IndexError):
+                return 8000
+        return 8000
+
+    @property
+    def api_base_url(self) -> str:
+        """返回用于 JS 替换的 API Base URL（不含协议头）"""
+        host = self.host
+        port = self.port
+        # 默认端口简化显示
+        if port in (80, 443):
+            return host
+        return f"{host}:{port}"
 
 
 # ─── 顶层 ───
@@ -210,6 +283,8 @@ class Settings(BaseModel):
     logging: LoggingConfig = LoggingConfig()
     security: SecurityConfig = SecurityConfig()
     cleanup: CleanupConfig = CleanupConfig()
+    leaderboard: LeaderboardConfig = LeaderboardConfig()
+    frontend: FrontendConfig = FrontendConfig()
 
     @model_validator(mode="after")
     def _check_admin_token_when_enabled(self) -> "Settings":
@@ -240,7 +315,6 @@ class Settings(BaseModel):
                     f"请检查 config.toml 中的路径配置。"
                 )
         log.debug("[Config] 字库文件校验通过")
-
 
         # 3. 确保 SQLite 父目录存在
         if self.database.type == DatabaseType.sqlite:

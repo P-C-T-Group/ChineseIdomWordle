@@ -631,6 +631,45 @@ function saveHistory(gameData) {
         history = history.slice(0, MAX_HISTORY);
     }
     localStorage.setItem(HISTORY_KEY, JSON.stringify(history));
+    
+    // 如果是daily模式且游戏已结束，自动提交日榜
+    if (gameData.mode === 'daily') {
+        submitDailyScore(gameData);
+    }
+}
+
+// 提交每日挑战成绩到日榜
+async function submitDailyScore(gameData) {
+    try {
+        // 从cookie判断用户是否有存档
+        const cookies = document.cookie.split(';').reduce((acc, c) => {
+            const [name, ...rest] = c.trim().split('=');
+            acc[name] = rest.join('=');
+            return acc;
+        }, {});
+        
+        if (!cookies['cw_lb_token']) {
+            return; // 没有存档，不提交
+        }
+        
+        await fetch('/api/leaderboard/daily/submit', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': 'Bearer test-token'
+            },
+            credentials: 'same-origin',
+            body: JSON.stringify({
+                game_id: gameData.game_id,
+                difficulty: gameData.difficulty,
+                won: gameData.status === 'won',
+                rounds: gameData.rounds
+            })
+        });
+    } catch (e) {
+        // 静默失败，不影响用户体验
+        console.log('提交日榜失败:', e);
+    }
 }
 
 // 获取历史记录列表

@@ -53,7 +53,7 @@
                     <line x1="12" y1="17" x2="12.01" y2="17"></line>
                 </svg>
             </button>
-            <button class="button" onclick="rank()" title="排行榜">
+            <button class="button active" onclick="rank()" title="排行榜">
                 <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
                     stroke-linecap="round" stroke-linejoin="round" aria-label="排行榜">
                     <line x1="18" y1="20" x2="18" y2="10"></line>
@@ -71,16 +71,102 @@
         </div>
     </div>
 
-    <!-- 装修中提示 -->
-    <div class="constructionContainer">
-        <div class="constructionIcon">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"
-                stroke-linecap="round" stroke-linejoin="round">
-                <path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"></path>
-            </svg>
+    <!-- 排行榜主容器 -->
+    <div class="leaderboardContainer">
+        <!-- 页头：难度和榜单类型切换 -->
+        <div class="lbHeader">
+            <div class="lbTabs">
+                <button class="lbTab active" data-board="total" onclick="switchBoard('total')">总榜</button>
+                <button class="lbTab" data-board="daily" onclick="switchBoard('daily')">日榜</button>
+            </div>
+            <div class="lbDifficulty">
+                <button class="lbDiffBtn active" data-diff="easy" onclick="switchDifficulty('easy')">简单</button>
+                <button class="lbDiffBtn" data-diff="medium" onclick="switchDifficulty('medium')">中等</button>
+                <button class="lbDiffBtn" data-diff="hard" onclick="switchDifficulty('hard')">困难</button>
+            </div>
         </div>
-        <h1 class="constructionTitle">正在装修中</h1>
-        <p class="constructionText">SQL不会写喵，过几天再来吧～</p>
+
+        <!-- 用户存档状态卡片 -->
+        <div class="profileCard" id="profileCard" style="display: none;">
+            <div class="profileHeader">
+                <div class="profileInfo">
+                    <span class="profileName" id="profileName">-</span>
+                    <span class="profileId" id="profileId">ID: -</span>
+                    <span class="profileLocation" id="profileLocation">📍 -</span>
+                </div>
+                <div class="profileActions">
+                    <button class="btnSmall primary" onclick="showUploadDialog()">上传/追加战绩</button>
+                    <button class="btnSmall danger" onclick="confirmDeleteProfile()">删除存档</button>
+                </div>
+            </div>
+            <div class="profileStats" id="profileStats"></div>
+        </div>
+
+        <!-- 未存档提示 -->
+        <div class="noProfileCard" id="noProfileCard">
+            <p>📊 您还没有创建排行榜存档</p>
+            <p class="hint">完成20局以上游戏后即可上传战绩，创建您的专属存档</p>
+            <button class="btnPrimary" onclick="showUploadDialog()">上传战绩创建存档</button>
+        </div>
+
+        <!-- 总榜：三种榜单切换 -->
+        <div class="boardTypeTabs" id="totalBoardTabs">
+            <button class="boardTypeBtn active" data-type="wins" onclick="switchBoardType('wins')">胜利数</button>
+            <button class="boardTypeBtn" data-type="win_rate" onclick="switchBoardType('win_rate')">胜率</button>
+            <button class="boardTypeBtn" data-type="avg_rounds" onclick="switchBoardType('avg_rounds')">平均回合</button>
+        </div>
+
+        <!-- 日榜日期显示 -->
+        <div class="dailyDate" id="dailyDate" style="display: none;">
+            <span>📅 今日挑战排行榜</span>
+        </div>
+
+        <!-- 排行榜列表 -->
+        <div class="lbListContainer">
+            <div class="lbList" id="lbList">
+                <div class="loading">加载中...</div>
+            </div>
+            <!-- 我的名次 -->
+            <div class="myRank" id="myRank" style="display: none;"></div>
+        </div>
+    </div>
+
+    <!-- 上传战绩弹窗 -->
+    <div class="modal-overlay" id="uploadModal" onclick="closeUploadModal(event)">
+        <div class="modal-content uploadModalContent" onclick="event.stopPropagation()">
+            <div class="modal-header">
+                <h2 id="uploadModalTitle">上传战绩到排行榜</h2>
+                <button class="close-btn" onclick="closeUploadModal()" title="关闭">
+                    <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                        stroke-linecap="round" stroke-linejoin="round">
+                        <line x1="18" y1="6" x2="6" y2="18"></line>
+                        <line x1="6" y1="6" x2="18" y2="18"></line>
+                    </svg>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div class="uploadForm">
+                    <div class="formGroup">
+                        <label for="usernameInput">用户名（32字以内）</label>
+                        <input type="text" id="usernameInput" maxlength="32" placeholder="输入您的用户名">
+                    </div>
+                    <div class="uploadStats" id="uploadStats"></div>
+                    <div class="uploadTips">
+                        <p>💡 提示：</p>
+                        <ul>
+                            <li>首次上传至少需要20局对战记录</li>
+                            <li>后续追加至少需要5局新记录</li>
+                            <li>战绩将保存在您的浏览器cookie中</li>
+                            <li>日榜成绩在完成每日挑战后自动提交</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer" style="display: flex; gap: 0.5rem;">
+                <button class="button secondary-btn" onclick="closeUploadModal()">取消</button>
+                <button class="button primary-btn" onclick="doUpload()">确认上传</button>
+            </div>
+        </div>
     </div>
 
     <!-- 历史记录弹窗 -->
@@ -96,17 +182,18 @@
                     </svg>
                 </button>
             </div>
-            <div class="modal-body" id="historyList">
-                <!-- 历史记录动态填充 -->
-            </div>
-            <div class="modal-footer" id="historyStats" style="display:none">
+            <div class="modal-body" id="historyList"></div>
+            <div class="modal-footer" id="historyFooter" style="display:none; gap: 0.5rem;">
                 <button class="button secondary-btn" onclick="clearHistory()">清空记录</button>
+                <button class="button primary-btn" onclick="closeHistory(); showUploadDialog()">上传到排行榜</button>
             </div>
         </div>
     </div>
 
     <footer class="footer">
-        <span>成语Wordle ©<a href="https://whj.zdeweb.cn" target="_blank">物化技</a> 2026 ｜ <a href="https://github.com/P-C-T-Group/ChineseIdomWordle" target="_blank">GitHub</a> ｜ <a href="https://doc.wordle.whj.zdeweb.cn" target="_blank">API文档</a></span>
+        <span>成语Wordle ©<a href="https://whj.zdeweb.cn" target="_blank">物化技</a> 2026 ｜ <a
+                href="https://github.com/P-C-T-Group/ChineseIdomWordle" target="_blank">GitHub</a> ｜ <a
+                href="https://doc.wordle.whj.zdeweb.cn" target="_blank">API文档</a></span>
     </footer>
 </body>
 

@@ -5,8 +5,14 @@
  * 功能：
  * 1. 替换 API baseURL 和 token
  * 2. 添加反调试代码
- * 3. 混淆 JS 代码
+ * 3. 混淆 JS 代码（支持多个文件）
  * 4. 输出替换原文件
+ * 
+ * 支持的文件：
+ * - client/js/indexScript.js (主游戏)
+ * - client/js/top.js (排行榜)
+ * - client/js/dialog.js (弹窗组件)
+ * - client/js/help.js (帮助页)
  */
 
 const fs = require('fs');
@@ -16,8 +22,13 @@ const crypto = require('crypto');
 
 const JavaScriptObfuscator = require('javascript-obfuscator');
 
-// 目标文件路径
-const TARGET_FILE = path.join(__dirname, '..', 'client', 'js', 'indexScript.js');
+// 目标文件列表（相对于项目根目录）
+const TARGET_FILES = [
+    'client/js/indexScript.js',
+    'client/js/top.js',
+    'client/js/dialog.js',
+    'client/js/help.js'
+];
 
 // 创建 readline 接口
 const rl = readline.createInterface({
@@ -32,81 +43,60 @@ function question(prompt) {
     });
 }
 
-async function main() {
-    console.log('=== 成语Wordle JS 混淆工具 ===\n');
-
-    // 1. 获取用户输入
-    const baseUrl = await question('请输入 API Base URL（不含 /api，直接回车保持默认 127.0.0.1:8000）: ');
-    const token = await question('请输入 API Token（原始字符串，不是sha256哈希！直接回车保持默认 test-token）: ');
-
-    console.log('\n正在处理...');
-
-    // 2. 读取原始 JS 文件
-    if (!fs.existsSync(TARGET_FILE)) {
-        console.error('错误：找不到文件', TARGET_FILE);
-        process.exit(1);
+// 处理单个文件
+function processFile(filePath, baseUrl, token, antiDebugEnabled) {
+    const defaultBaseUrl = '127.0.0.1:8000';
+    const defaultToken = 'test-token';
+    
+    console.log(`\n处理文件: ${filePath}`);
+    
+    // 1. 读取原始 JS 文件
+    if (!fs.existsSync(filePath)) {
+        console.log(`  ⚠️  文件不存在，跳过: ${filePath}`);
+        return { success: false, skipped: true };
     }
 
-    let jsCode = fs.readFileSync(TARGET_FILE, 'utf8');
+    let jsCode = fs.readFileSync(filePath, 'utf8');
+    const originalSize = Buffer.byteLength(jsCode, 'utf8');
+
+    // 2. 检查文件是否已经被混淆（简单检测）
+    if (jsCode.includes('===== 反调试保护 =====') && antiDebugEnabled) {
+        console.log('  ⚠️  文件似乎已包含反调试代码');
+    }
 
     // 3. 替换 baseURL
-    const defaultBaseUrl = '127.0.0.1:8000';
     if (baseUrl) {
-        // 处理用户输入：兼容多种写法
         let processedBaseUrl = baseUrl.trim();
-        // 移除 http:// 或 https:// 协议头（兼容带协议的输入）
         processedBaseUrl = processedBaseUrl.replace(/^https?:\/\//i, '');
-        // 移除尾部斜杠（兼容末尾带斜杠的输入）
         processedBaseUrl = processedBaseUrl.replace(/\/+$/, '');
+        const actualBaseUrl = processedBaseUrl;
 
-        console.log(`→ 替换 API 地址: ${defaultBaseUrl} → ${processedBaseUrl}`);
-        // 替换所有出现的地方
         jsCode = jsCode.split(`//${defaultBaseUrl}`).join(`//${processedBaseUrl}`);
+        jsCode = jsCode.split(`http://${defaultBaseUrl}`).join(`http://${processedBaseUrl}`);
+        jsCode = jsCode.split(`https://${defaultBaseUrl}`).join(`https://${processedBaseUrl}`);
+        console.log(`  → API 地址: ${defaultBaseUrl} → ${actualBaseUrl}`);
     } else {
-        console.log(`→ 保持默认 API 地址: ${defaultBaseUrl}`);
+        console.log(`  → 保持默认 API 地址: ${defaultBaseUrl}`);
     }
 
-    // 4. 替换 token - 修复bug：使用正则匹配完整的 'Bearer xxx' 格式
-    const defaultToken = 'test-token';
+    // 4. 替换 token
     const actualToken = token || defaultToken;
-
-    // 匹配模式：'Bearer <任意token>'
     const bearerPattern = /'Bearer ([^']+)'/g;
     const matches = jsCode.match(bearerPattern) || [];
-    console.log(`→ 找到 ${matches.length} 处 Bearer Token 配置`);
-
-    // 执行替换
-    jsCode = jsCode.replace(bearerPattern, `'Bearer ${actualToken}'`);
-
-    if (token) {
-        console.log(`→ 替换 Token: ${defaultToken} → ${actualToken}`);
-
-        // 验证替换是否成功
-        const newMatches = jsCode.match(bearerPattern) || [];
-        const replacedOk = newMatches.length === matches.length &&
-            newMatches.every(m => m === `'Bearer ${actualToken}'`);
-
-        if (replacedOk) {
-            console.log(`→ 验证：所有 ${newMatches.length} 处 Token 已替换成功 ✓`);
-        } else {
-            console.log(`→ ⚠️  警告：Token替换可能不完整，请手动检查！`);
-        }
-
-        // 计算并显示sha256，方便用户添加到后端
-        const tokenHash = crypto.createHash('sha256').update(actualToken).digest('hex');
-        console.log(`  注意：后端已改为通过管理员 API 管理玩家 Token（存储于数据库 tokens 表），请通过 /api/admin/tokens 添加或查询`);
-        console.log(`  该Token的SHA256值（可用于验证或记录）: ${tokenHash}`);
+    
+    if (matches.length > 0) {
+        jsCode = jsCode.replace(bearerPattern, `'Bearer ${actualToken}'`);
+        console.log(`  → Token 替换: 找到 ${matches.length} 处，${token ? '已替换' : '保持默认'}`);
     } else {
-        console.log(`→ 保持默认 Token: ${defaultToken}`);
-        console.log(`  对应的SHA256值: 4c5dc9b7708905f77f5e5d16316b5dfb425e68cb326dcd55a860e90a7707031e`);
+        console.log(`  → 未找到 Bearer Token 配置，跳过替换`);
     }
 
     // 5. 添加反调试代码
-    const antiDebugCode = `
+    if (antiDebugEnabled) {
+        const antiDebugCode = `
 // ===== 反调试保护 =====
 (function() {
     function antiDebug() {
-        // 陷阱1：检测开发者工具
         const startTime = new Date();
         debugger;
         const endTime = new Date();
@@ -114,8 +104,6 @@ async function main() {
             document.body.innerHTML = '<div style="position:fixed;top:0;left:0;width:100%;height:100%;background:var(--bg);display:flex;align-items:center;justify-content:center;flex-direction:column;z-index:99999;font-family:sans-serif;"><h1 style="color:var(--primary);font-size:2em;margin-bottom:1rem;">检测到开发者工具</h1><p style="color:var(--text-secondary);">请关闭开发者工具后刷新页面</p></div>';
             return;
         }
-
-        // 陷阱2：定时检测调试器
         setInterval(function() {
             const start = performance.now();
             debugger;
@@ -124,119 +112,126 @@ async function main() {
                 document.body.innerHTML = '<div style="position:fixed;top:0;left:0;width:100%;height:100%;background:var(--bg);display:flex;align-items:center;justify-content:center;flex-direction:column;z-index:99999;font-family:sans-serif;"><h1 style="color:var(--primary);font-size:2em;margin-bottom:1rem;">检测到调试器</h1><p style="color:var(--text-secondary);">请关闭调试工具后刷新页面</p></div>';
             }
         }, 1000);
-
-        // 陷阱3：禁止右键
-        document.addEventListener('contextmenu', function(e) {
-            e.preventDefault();
-            return false;
-        });
-
-        // 陷阱4：禁止某些快捷键
+        document.addEventListener('contextmenu', function(e) { e.preventDefault(); return false; });
         document.addEventListener('keydown', function(e) {
-            // F12
-            if (e.key === 'F12') {
-                e.preventDefault();
-                return false;
-            }
-            // Ctrl+Shift+I / Ctrl+Shift+J / Ctrl+Shift+C
-            if (e.ctrlKey && e.shiftKey && ['I', 'J', 'C'].includes(e.key.toUpperCase())) {
-                e.preventDefault();
-                return false;
-            }
-            // Ctrl+U
-            if (e.ctrlKey && e.key.toUpperCase() === 'U') {
-                e.preventDefault();
-                return false;
-            }
+            if (e.key === 'F12') { e.preventDefault(); return false; }
+            if (e.ctrlKey && e.shiftKey && ['I', 'J', 'C'].includes(e.key.toUpperCase())) { e.preventDefault(); return false; }
+            if (e.ctrlKey && e.key.toUpperCase() === 'U') { e.preventDefault(); return false; }
         });
-
-        // 陷阱5：console 清空干扰
-        const originalLog = console.log;
-        console.log = function() {};
-        console.warn = function() {};
-        console.info = function() {};
-        console.error = function() {};
-        setInterval(function() {
-            console.clear();
-        }, 1000);
+        console.log = function() {}; console.warn = function() {}; console.info = function() {}; console.error = function() {};
+        setInterval(function() { console.clear(); }, 1000);
     }
     antiDebug();
 })();
 // ===== 反调试保护结束 =====
 
 `;
+        jsCode = antiDebugCode + jsCode;
+        console.log('  → 已添加反调试保护');
+    }
 
-    // 在 JS 代码开头插入反调试代码
-    jsCode = antiDebugCode + jsCode;
-
-    // 6. 混淆代码 - 精简配置，目标膨胀比例 ~120%
-    console.log('→ 正在混淆代码...');
+    // 6. 混淆代码
+    console.log('  → 正在混淆代码...');
     const obfuscationResult = JavaScriptObfuscator.obfuscate(jsCode, {
-        // 基础压缩
         compact: true,
         simplify: true,
-
-        // 标识符混淆（轻量，体积影响小）
         identifierNamesGenerator: 'hexadecimal',
         renameGlobals: false,
-
-        // 核心保护（保留）
         selfDefending: true,
         debugProtection: true,
-        debugProtectionInterval: 8000, // 间隔更长，降低运行时开销
+        debugProtectionInterval: 8000,
         disableConsoleOutput: true,
-
-        // 高膨胀选项 - 全部关闭
-        controlFlowFlattening: false,   // 控制流扁平化 - 关闭（体积大户）
-        deadCodeInjection: false,       // 死代码注入 - 关闭（体积大户）
-        numbersToExpressions: false,    // 数字转表达式 - 关闭
-        splitStrings: false,            // 字符串拆分 - 关闭
-        transformObjectKeys: false,     // 对象键转换 - 关闭
-        unicodeEscapeSequence: false,   // Unicode转义 - 关闭
-
-        // 字符串数组（轻量配置）
+        controlFlowFlattening: false,
+        deadCodeInjection: false,
+        numbersToExpressions: false,
+        splitStrings: false,
+        transformObjectKeys: false,
+        unicodeEscapeSequence: false,
         stringArray: true,
-        stringArrayEncoding: [],        // 不加密，减少运行时开销和体积
-        stringArrayWrappersCount: 1,    // 最少包装器
-        stringArrayThreshold: 0.3,      // 只提取30%字符串到数组
+        stringArrayEncoding: [],
+        stringArrayWrappersCount: 1,
+        stringArrayThreshold: 0.3,
         stringArrayRotate: true,
         stringArrayShuffle: true,
-
         target: 'browser',
         seed: Math.floor(Math.random() * 1000000)
     });
 
     const obfuscatedCode = obfuscationResult.getObfuscatedCode();
 
-    // 7. 备份原文件并写入混淆后的代码
-    const backupFile = TARGET_FILE + '.backup';
+    // 7. 备份原文件并写入
+    const backupFile = filePath + '.backup';
     if (!fs.existsSync(backupFile)) {
-        fs.copyFileSync(TARGET_FILE, backupFile);
-        console.log(`→ 原文件已备份到: ${backupFile}`);
+        fs.copyFileSync(filePath, backupFile);
+        console.log(`  → 原文件已备份到: ${backupFile}`);
+    } else {
+        console.log(`  → 备份文件已存在: ${backupFile}`);
     }
 
-    fs.writeFileSync(TARGET_FILE, obfuscatedCode, 'utf8');
+    fs.writeFileSync(filePath, obfuscatedCode, 'utf8');
 
-    // 输出统计
-    const originalSize = Buffer.byteLength(jsCode, 'utf8');
     const obfuscatedSize = Buffer.byteLength(obfuscatedCode, 'utf8');
     const ratio = ((obfuscatedSize / originalSize) * 100).toFixed(1);
+    console.log(`  ✅ 完成: ${(originalSize / 1024).toFixed(2)} KB → ${(obfuscatedSize / 1024).toFixed(2)} KB (${ratio}%)`);
+    
+    return { success: true, originalSize, obfuscatedSize, ratio };
+}
 
-    console.log('\n✅ 混淆完成！');
-    console.log(`→ 原始大小: ${(originalSize / 1024).toFixed(2)} KB`);
-    console.log(`→ 混淆大小: ${(obfuscatedSize / 1024).toFixed(2)} KB`);
-    console.log(`→ 膨胀比例: ${ratio}%`);
-    console.log(`→ 输出文件: ${TARGET_FILE}`);
+async function main() {
+    console.log('=== 成语Wordle JS 混淆工具 ===\n');
+    console.log(`将处理以下 ${TARGET_FILES.length} 个文件:`);
+    TARGET_FILES.forEach(f => console.log(`  - ${f}`));
+    console.log('');
 
-    if (baseUrl || token) {
-        console.log('\n⚠️  注意：API 地址和 Token 已硬编码到混淆后的 JS 中，如需修改请从 .backup 文件恢复后重新运行脚本');
+    console.log('--- 配置参数 ---');
+    const baseUrl = await question('请输入 API Base URL（不含 /api，直接回车保持默认 127.0.0.1:8000）: ');
+    const token = await question('请输入 API Token（直接回车保持默认 test-token）: ');
+    const antiDebugInput = await question('启用反调试保护？(Y/n，默认启用): ');
+    const antiDebugEnabled = !antiDebugInput || antiDebugInput.toLowerCase().startsWith('y');
+
+    console.log('\n--- 开始处理 ---\n');
+
+    const projectRoot = path.join(__dirname, '..');
+    const results = [];
+    let totalOriginalSize = 0;
+    let totalObfuscatedSize = 0;
+
+    for (const relPath of TARGET_FILES) {
+        const fullPath = path.join(projectRoot, relPath);
+        const result = processFile(fullPath, baseUrl, token, antiDebugEnabled);
+        if (result.success) {
+            totalOriginalSize += result.originalSize;
+            totalObfuscatedSize += result.obfuscatedSize;
+        }
+        results.push({ file: relPath, ...result });
     }
+
+    console.log('\n--- 处理完成 ---');
+    console.log(`成功处理: ${results.filter(r => r.success).length} / ${TARGET_FILES.length} 个文件`);
+    console.log(`总原始大小: ${(totalOriginalSize / 1024).toFixed(2)} KB`);
+    console.log(`总混淆大小: ${(totalObfuscatedSize / 1024).toFixed(2)} KB`);
+    console.log(`总膨胀比例: ${((totalObfuscatedSize / totalOriginalSize) * 100).toFixed(1)}%`);
+
+    console.log('\n⚠️  重要说明：');
+    console.log('  - API 地址和 Token 已硬编码到混淆后的 JS 中');
+    console.log('  - 如需修改配置，请从 .backup 文件恢复原始文件后重新运行本脚本');
+    console.log('  - 原始备份文件位置: <文件名>.backup');
+
+    console.log('\n📝 恢复原始文件方法：');
+    console.log('  方法1: 使用 git checkout 恢复: git checkout client/js/*.js');
+    console.log('  方法2: 手动将 .backup 文件重命名去掉 .backup 后缀');
+
+    const actualToken = token || 'test-token';
+    const tokenHash = crypto.createHash('sha256').update(actualToken).digest('hex');
+    console.log(`\n🔑 当前前端 Token: ${actualToken}`);
+    console.log(`   SHA256 哈希: ${tokenHash}`);
+    console.log('   请通过 /api/admin/tokens/add 接口将此Token添加到后端数据库');
 
     rl.close();
 }
 
 main().catch(err => {
-    console.error('发生错误:', err);
+    console.error('\n❌ 发生错误:', err);
     rl.close();
     process.exit(1);
 });

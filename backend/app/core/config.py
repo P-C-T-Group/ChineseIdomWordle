@@ -26,9 +26,9 @@ else:  # pragma: no cover
             "读取 TOML 配置需要 Python 3.11+ 或安装 tomli（pip install tomli）"
         ) from e
 
-# 默认配置文件位置：backend/config.toml（相对本文件向上两级）
+# 默认配置文件位置：项目根目录 config.toml（本文件位于 backend/app/core/，向上 4 级）
 _DEFAULT_CONFIG_PATH = Path(__file__).resolve(
-).parent.parent.parent / "config.toml"
+).parent.parent.parent.parent / "config.toml"
 
 # 环境变量覆盖项映射：(env_name, settings_path_tuple, cast_fn)
 # settings_path_tuple 用点号拆分定位到 Settings 内的字段
@@ -49,6 +49,10 @@ _ENV_OVERRIDES = [
     # 日志
     ("WORDLE_LOG_LEVEL", ("logging", "level"), str),
     ("WORDLE_LOG_DIR", ("logging", "dir"), str),
+    # 排行榜
+    ("WORDLE_LB_MIN_GAMES", ("leaderboard", "min_games_to_upload"), int),
+    ("WORDLE_LB_MIN_APPEND", ("leaderboard", "min_new_records_to_append"), int),
+    ("WORDLE_LB_INACTIVE_DAYS", ("leaderboard", "inactive_days"), int),
 ]
 
 _settings_lock = threading.Lock()

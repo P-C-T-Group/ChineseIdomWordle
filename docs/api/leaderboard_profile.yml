@@ -1,0 +1,18 @@
+openapi: 3.1.0
+info:
+  title: ChineseIdomWordle API
+  version: 1.0.0
+  description: 获取用户存档信息接口
+paths:
+  /api/leaderboard/profile/me:
+    get:
+      summary: Api Get My Profile
+      description: 获取当前用户存档信息
+      operationId: api_get_my_profile_api_leaderboard_profile_me_get
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+components: {}
