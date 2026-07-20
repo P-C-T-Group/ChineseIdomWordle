@@ -96,7 +96,7 @@ jobs:
             ghcr.io/p-c-t-group/c-i-wordle:${{ steps.version.outputs.version }}
             ghcr.io/p-c-t-group/c-i-wordle:latest
           build-args: |
-            USE_CN_MIRROR=true
+            USE_CN_MIRROR=False
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
