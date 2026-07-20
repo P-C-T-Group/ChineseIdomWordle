@@ -28,6 +28,7 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 
 # ──────────────────────────── APT 换源 + 安装 Node.js ────────────────────────────
 RUN set -eux; \
+    # 第一步：配置 APT 源
     if [ "$USE_CN_MIRROR" = "true" ]; then \
         echo "=== [国内模式] 配置清华 APT 镜像源 ==="; \
         # 兼容两种 sources 格式（DEB822 格式和传统格式）
@@ -38,21 +39,16 @@ RUN set -eux; \
             sed -i 's|deb.debian.org|mirrors.tuna.tsinghua.edu.cn|g' /etc/apt/sources.list; \
             sed -i 's|security.debian.org|mirrors.tuna.tsinghua.edu.cn|g' /etc/apt/sources.list; \
         fi; \
-        # pip 配置清华源
-        pip config set global.index-url https://pypi.tuna.tsinghua.edu.cn/simple; \
-        pip config set global.trusted-host pypi.tuna.tsinghua.edu.cn; \
-        # npm 配置淘宝源
-        npm config set registry https://registry.npmmirror.com; \
     else \
         echo "=== [海外模式] 使用官方源 ==="; \
     fi; \
-    # 安装基础依赖
+    # 第二步：安装基础依赖
     apt-get update && apt-get install -y --no-install-recommends \
        curl \
        ca-certificates \
        gnupg; \
-    # 安装 Node.js 20.x
-    echo "=== 安装 Node.js 20.x ==="; \
+    # 第三步：添加 NodeSource 软件源
+    echo "=== 配置 Node.js 20.x 软件源 ==="; \
     if [ "$USE_CN_MIRROR" = "true" ]; then \
         # 国内：使用清华镜像 + jsdelivr 获取 GPG 密钥
         curl -fsSL https://cdn.jsdelivr.net/gh/nodesource/distributions@dev/keyrings/nodesource.gpg | gpg --dearmor -o /usr/share/keyrings/nodesource.gpg; \
@@ -61,9 +57,18 @@ RUN set -eux; \
         # 海外：使用官方源
         curl -fsSL https://deb.nodesource.com/setup_20.x | bash -; \
     fi; \
+    # 第四步：安装 Node.js
     apt-get update && apt-get install -y --no-install-recommends nodejs; \
     # 清理缓存减小镜像体积
     rm -rf /var/lib/apt/lists/*; \
+    # 第五步：Node.js 安装完成后再配置 npm/pip 国内源
+    if [ "$USE_CN_MIRROR" = "true" ]; then \
+        echo "=== 配置 pip 清华源 ==="; \
+        pip config set global.index-url https://pypi.tuna.tsinghua.edu.cn/simple; \
+        pip config set global.trusted-host pypi.tuna.tsinghua.edu.cn; \
+        echo "=== 配置 npm 淘宝源 ==="; \
+        npm config set registry https://registry.npmmirror.com; \
+    fi; \
     # 验证 Node.js 和 npm 版本
     node -v && npm -v
 
