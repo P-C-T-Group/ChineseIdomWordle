@@ -69,6 +69,9 @@ COPY backend/requirements.txt /app/backend/requirements.txt
 RUN echo "=== 安装 Python 依赖 ===" \
     && pip install --no-cache-dir -r /app/backend/requirements.txt
 
+# 先复制配置处理脚本和依赖文件
+COPY setup_config.py /app/setup_config.py
+
 # 复制项目文件（先复制全部，后面 entrypoint 会处理挂载时的默认文件）
 COPY . /app/
 
@@ -88,23 +91,8 @@ RUN echo "=== 安装 Node.js 依赖（javascript-obfuscator） ===" \
 RUN mkdir -p /app/defaults/config \
     /app/defaults/data \
     /app/defaults/client \
-    # 使用 Python 脚本修改配置（更可靠，避免 sed 转义问题）
-    && python3 -c "
-import re
-for path in ['/app/defaults/config/config.toml', '/app/config.toml']:
-    # 复制 example 配置
-    import shutil
-    shutil.copy('/app/config.example.toml', path)
-    with open(path, 'r') as f:
-        content = f.read()
-    # Docker 环境监听 0.0.0.0
-    content = re.sub(r'listen_host\s*=\s*\"127\.0\.0\.1\"', 'listen_host = \"0.0.0.0\"', content)
-    # 默认使用 SQLite
-    content = re.sub(r'^type\s*=\s*\"mysql\"', 'type = \"sqlite\"', content, flags=re.MULTILINE)
-    with open(path, 'w') as f:
-        f.write(content)
-print('配置文件已处理')
-" \
+    # 使用 Python 脚本处理配置文件（更可靠，避免 sed 转义问题）
+    && python3 /app/setup_config.py \
     # 保存默认 data 目录内容
     && cp -r /app/data/* /app/defaults/data/ \
     # 保存默认 client 目录内容

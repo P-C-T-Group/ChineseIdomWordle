@@ -63,7 +63,6 @@ docs/
 # Docker 自身
 Dockerfile
 docker-compose.yml
-docker-entrypoint.sh
 .dockerignore
 
 # 备份文件
