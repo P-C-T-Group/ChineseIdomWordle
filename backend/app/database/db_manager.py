@@ -1308,8 +1308,8 @@ def record_uploaded_games(user_id: str, records: list[dict]) -> int:
                             f"INSERT OR IGNORE INTO top_user_games (user_id, game_id, timestamp) VALUES ({ph}, {ph}, {ph})",
                             (user_id, rec['game_id'], rec['timestamp']))
                         added += conn.total_changes and 1 or 0
-                    except Exception:
-                        pass
+                    except Exception as e:
+                        log.warning(f"[DB] 跳过上传记录写入失败 user_id={user_id}, game_id={rec.get('game_id')}, err={e}")
                 conn.commit()
             finally:
                 conn.close()
