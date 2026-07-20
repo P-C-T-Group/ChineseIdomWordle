@@ -22,6 +22,10 @@ if not EXAMPLE_CONFIG.exists():
 
 for target in TARGET_PATHS:
     print(f'处理: {target}')
+    # 如果目标是目录（Docker 挂载空文件时会创建目录），先删除
+    if target.is_dir():
+        print(f'警告: {target} 是目录，正在删除...')
+        shutil.rmtree(target)
     target.parent.mkdir(parents=True, exist_ok=True)
     shutil.copy(EXAMPLE_CONFIG, target)
 
