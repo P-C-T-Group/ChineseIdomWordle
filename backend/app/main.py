@@ -171,6 +171,30 @@ async def _stop_cleanup_task():
 
 
 @app.middleware("http")
+async def fix_empty_body_status_codes(request: Request, call_next):
+    """
+    全局中间件 - 修复禁止携带 body 的状态码响应
+    浏览器/HTTP 规范规定：1xx、204 No Content、304 Not Modified 响应不能携带 body。
+    Starlette StaticFiles 在返回 304 时可能错误附带 body 或 Content-Length，
+    导致浏览器抛出: TypeError: Response cannot have a body with the given status.
+    本中间件强制清空这些状态码的响应体，并移除 body 相关头。
+    """
+    response = await call_next(request)
+    if response.status_code in (204, 304) or 100 <= response.status_code < 200:
+        # 清空响应体 - 使用空异步生成器，兼容 Response / StreamingResponse / FileResponse
+        async def empty_body():
+            if False:
+                yield b""
+        response.body_iterator = empty_body()
+        # 移除 Content-Length / Transfer-Encoding（这些头在无 body 时必须一致）
+        # 注：304 可以保留 Content-Type，因为它指向的是缓存资源的类型
+        for header_name in ("content-length", "transfer-encoding"):
+            if header_name in response.headers:
+                del response.headers[header_name]
+    return response
+
+
+@app.middleware("http")
 async def add_global_server_headers(request: Request, call_next):
     """
     全局中间件 -  注入响应头

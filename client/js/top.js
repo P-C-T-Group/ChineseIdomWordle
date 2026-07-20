@@ -87,17 +87,40 @@ async function apiFetch(url, options = {}) {
     }
     
     const resp = await fetch(API_BASE + url, merged);
-    const data = await resp.json();
-    if (!resp.ok || data.code >= 400) {
-        throw new Error(data.detail || data.message || '请求失败');
+    
+    // 处理空响应（如204 No Content）
+    let data = {};
+    const text = await resp.text();
+    if (text) {
+        try {
+            data = JSON.parse(text);
+        } catch (e) {
+            data = { message: text };
+        }
+    }
+    
+    if (!resp.ok || (data.code && data.code >= 400)) {
+        throw new Error(data.detail || data.message || `请求失败 (${resp.status})`);
     }
     return data;
 }
 
 // ========== 页面初始化 ==========
 document.addEventListener('DOMContentLoaded', async () => {
-    await loadMyProfile();
-    await loadLeaderboard();
+    try {
+        await loadMyProfile();
+    } catch (e) {
+        console.log('加载存档失败:', e);
+        myProfile = null;
+        renderProfile();
+    }
+    try {
+        await loadLeaderboard();
+    } catch (e) {
+        console.log('加载排行榜失败:', e);
+        const listEl = document.getElementById('lbList');
+        if (listEl) listEl.innerHTML = `<div class="empty">加载失败: ${e.message}</div>`;
+    }
 });
 
 // ========== 切换功能 ==========
