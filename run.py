@@ -364,6 +364,8 @@ def create_fullstack_app(settings):
         # 静态文件兜底
         @full_app.get("/{file_path:path}")
         async def static_fallback(file_path: str, request: Request):
+            from fastapi.responses import RedirectResponse
+
             # 再次检查禁止访问.backup文件
             if file_path.endswith(".backup"):
                 return JSONResponse(
@@ -372,13 +374,28 @@ def create_fullstack_app(settings):
                         code=403, status="fail", message="Forbidden").model_dump()
                 )
 
-            # .well-known文件在client目录下，直接由file_fs_path处理即可
-            # 无需额外处理，因为well_known_dir在client目录下
-
-            # 再检查client目录
             file_fs_path = client_dir / file_path
+
+            # 情况1: 如果是目录，返回目录下的index.html，或者重定向到带斜杠的路径
+            if file_fs_path.is_dir():
+                index_file = file_fs_path / "index.html"
+                if index_file.is_file():
+                    # 目录存在且有index.html
+                    if not request.url.path.endswith('/'):
+                        # 不带斜杠的目录访问，重定向到带斜杠
+                        return RedirectResponse(url=f"/{file_path}/", status_code=301)
+                    return FileResponse(str(index_file))
+
+            # 情况2: 路径对应的文件存在，直接返回
             if file_fs_path.is_file():
                 return FileResponse(str(file_fs_path))
+
+            # 情况3: 尝试加.html后缀（支持不带后缀的路由）
+            html_file = client_dir / f"{file_path}.html"
+            if html_file.is_file():
+                return FileResponse(str(html_file))
+
+            # 404
             return JSONResponse(
                 status_code=404,
                 content=ErrorResponse(
