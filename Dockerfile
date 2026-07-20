@@ -24,9 +24,7 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
     PIP_NO_CACHE_DIR=1 \
     PIP_DISABLE_PIP_VERSION_CHECK=1 \
-    TZ=Asia/Shanghai \
-    # npm 源通过环境变量配置（国内模式时在 RUN 中覆盖）
-    NPM_CONFIG_REGISTRY=https://registry.npmjs.org
+    TZ=Asia/Shanghai
 
 # ──────────────────────────── APT 换源 + 安装 Node.js ────────────────────────────
 RUN set -eux; \
