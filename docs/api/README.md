@@ -26,7 +26,7 @@
 | `/api/leaderboard/{difficulty}` | GET | [leaderboard_get.yml](leaderboard_get.yml) | 获取用户总榜（三种榜单） |
 | `/api/leaderboard/{difficulty}/daily` | GET | [leaderboard_daily_get.yml](leaderboard_daily_get.yml) | 获取每日挑战排行榜 |
 | `/api/leaderboard/profile/me` | GET | [leaderboard_profile.yml](leaderboard_profile.yml) | 获取个人存档 |
-| `/api/leaderboard/profile/delete` | POST | [leaderboard_profile_delete.yml](leaderboard_profile_delete.yml) | 删除个人存档 |
+| `/api/leaderboard/profile/delete` | GET | [leaderboard_profile_delete.yml](leaderboard_profile_delete.yml) | 删除个人存档 |
 
 **难度参数 `difficulty` 可选值**:
 - `easy` - 简单

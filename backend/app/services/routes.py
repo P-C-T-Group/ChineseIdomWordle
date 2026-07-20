@@ -252,7 +252,7 @@ async def admin_list_tokens(request: Request):
     return {'code': 200, 'status': 'success', 'total': len(rows), 'tokens': rows}
 
 
-@router.post('/admin/tokens/delete')
+@router.get('/admin/tokens/delete')
 async def admin_delete_tokens(request: Request):
     """删除接口：批量删除 token。
 
