@@ -1063,7 +1063,7 @@ def get_leaderboard(difficulty: str, board_type: str, limit: int = 100, user_id:
 
                 if user_id and my_rank is None:
                     rank_query = f"""
-                        SELECT COUNT(*) + 1 as rank FROM top_user
+                        SELECT COUNT(*) + 1 as `rank` FROM top_user
                         WHERE {total_col} >= %s AND {order_clause} < (SELECT {value_expr} FROM top_user WHERE user_id = %s)
                     """
                     cursor.execute(rank_query, (min_games, user_id))
@@ -1144,7 +1144,7 @@ def get_daily_leaderboard(difficulty: str, play_date: str, limit: int = 100, use
 
                 if user_id and my_rank is None:
                     rank_query = """
-                        SELECT COUNT(*) + 1 as rank
+                        SELECT COUNT(*) + 1 as `rank`
                         FROM top_daily d
                         WHERE d.difficulty = %s AND d.play_date = %s AND d.won = 1 AND d.mode = 'daily'
                           AND d.rounds < (SELECT rounds FROM top_daily WHERE user_id = %s AND difficulty = %s AND play_date = %s AND mode = 'daily')
