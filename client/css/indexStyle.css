@@ -900,3 +900,68 @@ body {
         font-size: 1.2em;
     }
 }
+
+/* ===== 音效切换悬浮按钮 ===== */
+.sound-toggle {
+    /* 重置所有继承样式，避免被全局按钮样式污染 */
+    all: unset;
+    position: fixed;
+    right: 1.2rem;
+    bottom: 3.8rem;
+    width: clamp(36px, 5vw, 44px);
+    height: clamp(36px, 5vw, 44px);
+    border-radius: 50%;
+    background-color: var(--card-bg);
+    border: 1px solid var(--border);
+    box-shadow: var(--shadow-sm);
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 9999;
+    transition: var(--transition);
+    padding: 0;
+    opacity: 0.8;
+    box-sizing: border-box;
+}
+
+.sound-toggle:hover {
+    opacity: 1;
+    background-color: var(--bg-secondary);
+    border-color: var(--primary);
+}
+
+.sound-toggle .icon {
+    width: clamp(16px, 2.5vw, 20px);
+    height: clamp(16px, 2.5vw, 20px);
+    stroke: var(--text-secondary);
+    transition: var(--transition);
+    flex-shrink: 0;
+}
+
+.sound-toggle:hover .icon {
+    stroke: var(--primary);
+}
+
+/* 开启音效状态 */
+.sound-toggle.sound-on {
+    opacity: 1;
+}
+
+.sound-toggle.sound-on .icon {
+    stroke: var(--primary);
+}
+
+/* 移动端适配 */
+@media (max-width: 480px) {
+    .sound-toggle {
+        right: 1rem;
+        bottom: 3.5rem;
+        width: 40px;
+        height: 40px;
+    }
+    .sound-toggle .icon {
+        width: 18px;
+        height: 18px;
+    }
+}

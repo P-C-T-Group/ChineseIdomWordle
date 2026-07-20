@@ -36,7 +36,44 @@ function unlockGame() {
 }
 
 const endMusic = new Audio('结束.wav');
-const startMusic = new Audio('要开始了哟.wav')
+const startMusic = new Audio('要开始了哟.wav');
+
+// ========== 音效控制：默认静音，状态持久化 ==========
+let soundEnabled = localStorage.getItem('soundEnabled') === 'true';
+
+function updateSoundButton() {
+    const btn = document.getElementById('soundToggle');
+    const offIcon = btn.querySelector('.sound-off-icon');
+    const onIcon = btn.querySelector('.sound-on-icon');
+    if (soundEnabled) {
+        btn.classList.add('sound-on');
+        btn.title = '关闭音效';
+        offIcon.style.display = 'none';
+        onIcon.style.display = 'block';
+    } else {
+        btn.classList.remove('sound-on');
+        btn.title = '开启音效';
+        offIcon.style.display = 'block';
+        onIcon.style.display = 'none';
+    }
+}
+
+function toggleSound() {
+    soundEnabled = !soundEnabled;
+    localStorage.setItem('soundEnabled', soundEnabled);
+    updateSoundButton();
+}
+
+// 页面加载时初始化按钮状态
+document.addEventListener('DOMContentLoaded', updateSoundButton);
+
+// 安全播放：仅在音效开启时播放
+function playSound(audio) {
+    if (soundEnabled) {
+        audio.currentTime = 0;
+        audio.play().catch(() => {});
+    }
+}
 
 const colorDict = {
     'correct': 'green',
@@ -114,7 +151,7 @@ async function submitGuess(guessStr) {
 function startGame() {
     if (isStarting) return;
     isStarting = true;
-    startMusic.play();
+    playSound(startMusic);
     mode = document.querySelector('input[name="mode"]:checked').value;
     difficulty = document.querySelector('input[name="difficulty"]:checked').value;
     fetch('//127.0.0.1:8000/api/games', {
@@ -375,7 +412,7 @@ function guess() {
 }
 
 async function won(ans, py, explanation) {
-    endMusic.play()
+    playSound(endMusic);
     lockGame();
     for (var i = 0; i <= 3; i++) {
         document.getElementById(turn + '/' + i).style.backgroundColor = colorDict['correct']
@@ -430,6 +467,7 @@ async function playing(result, gameData) {
         turn += 1;
     } else {
         // 回合用尽，锁定答题区
+        playSound(endMusic);
         lockGame();
         // 直接使用submitGuess返回的答案数据，不需要额外调用/reveal接口
         // 后端在最后一回合提交猜词后已经返回了答案
@@ -562,6 +600,7 @@ async function revealAnswer() {
         }
 
         // 揭晓答案，锁定答题区
+        playSound(endMusic);
         lockGame();
 
         // 标记已输入的格子为absent状态
