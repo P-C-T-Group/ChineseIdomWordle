@@ -19,6 +19,13 @@ ARG USE_CN_MIRROR=true
 # 设置工作目录
 WORKDIR /app
 
+# OCI 镜像元数据（GitHub Actions 构建时会通过 annotations 覆盖）
+LABEL org.opencontainers.image.title="ChineseIdomWordle" \
+      org.opencontainers.image.description="ChineseIdomWordle 成语 Wordle 游戏服务" \
+      org.opencontainers.image.source="https://github.com/P-C-T-Group/ChineseIdomWordle" \
+      org.opencontainers.image.vendor="P-C-T-Group" \
+      org.opencontainers.image.licenses="MIT"
+
 # 设置环境变量
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \

@@ -82,6 +82,27 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
+      # 生成构建元数据（北京时间、短 commit SHA、稳定版号）
+      - name: Generate build metadata
+        id: meta
+        run: |
+          BUILD_TIME=$(TZ='Asia/Shanghai' date +'%Y-%m-%d %H:%M:%S CST')
+          BUILD_TIME_ISO=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+          SHORT_SHA="${GITHUB_SHA::12}"
+          STABLE_VERSION="${{ steps.version.outputs.version }}"
+          # 取主.次版本（去掉补丁号），如 2.0.1 -> 2.0
+          STABLE_MAJOR_MINOR=$(echo "$STABLE_VERSION" | awk -F. '{print $1"."$2}')
+
+          echo "build_time=$BUILD_TIME" >> "$GITHUB_OUTPUT"
+          echo "build_time_iso=$BUILD_TIME_ISO" >> "$GITHUB_OUTPUT"
+          echo "short_sha=$SHORT_SHA" >> "$GITHUB_OUTPUT"
+          echo "stable_version=$STABLE_MAJOR_MINOR" >> "$GITHUB_OUTPUT"
+          echo "full_version=$STABLE_VERSION" >> "$GITHUB_OUTPUT"
+
+          echo "Build time: $BUILD_TIME"
+          echo "Commit: $SHORT_SHA"
+          echo "Stable version: $STABLE_MAJOR_MINOR"
+
       # 配置国内镜像源加速构建
       - name: Configure Docker mirror
         run: |
@@ -98,6 +119,24 @@ jobs:
           tags: |
             ghcr.io/p-c-t-group/c-i-wordle:${{ steps.version.outputs.version }}
             ghcr.io/p-c-t-group/c-i-wordle:latest
+          labels: |
+            org.opencontainers.image.title=ChineseIdomWordle
+            org.opencontainers.image.description=镜像由 GitHub Actions 于 ${{ steps.meta.outputs.build_time }} 自动构建 | 构建来源提交: ${{ steps.meta.outputs.short_sha }} | 当前稳定版: ${{ steps.meta.outputs.stable_version }}
+            org.opencontainers.image.version=${{ steps.meta.outputs.full_version }}
+            org.opencontainers.image.revision=${{ github.sha }}
+            org.opencontainers.image.created=${{ steps.meta.outputs.build_time_iso }}
+            org.opencontainers.image.source=https://github.com/${{ github.repository }}
+            org.opencontainers.image.vendor=P-C-T-Group
+            org.opencontainers.image.licenses=MIT
+          annotations: |
+            org.opencontainers.image.title=ChineseIdomWordle
+            org.opencontainers.image.description=镜像由 GitHub Actions 于 ${{ steps.meta.outputs.build_time }} 自动构建 | 构建来源提交: ${{ steps.meta.outputs.short_sha }} | 当前稳定版: ${{ steps.meta.outputs.stable_version }}
+            org.opencontainers.image.version=${{ steps.meta.outputs.full_version }}
+            org.opencontainers.image.revision=${{ github.sha }}
+            org.opencontainers.image.created=${{ steps.meta.outputs.build_time_iso }}
+            org.opencontainers.image.source=https://github.com/${{ github.repository }}
+            org.opencontainers.image.vendor=P-C-T-Group
+            org.opencontainers.image.licenses=MIT
           build-args: |
             USE_CN_MIRROR=False
           cache-from: type=gha
