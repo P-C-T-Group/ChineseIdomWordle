@@ -655,7 +655,7 @@ async def api_get_my_profile(request: Request):
     }
 
 
-@router.delete("/leaderboard/profile/me")
+@router.post("/leaderboard/profile/delete")
 async def api_delete_my_profile(request: Request):
     """用户删除自己的存档"""
     cookie_token = _get_lb_cookie(request)

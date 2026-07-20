@@ -454,7 +454,6 @@ def main():
         print(f"  排行榜: http://{host}:{port}/top/")
         print(f"  帮助:  http://{host}:{port}/help/")
         print(f"  API:  http://{host}:{port}/api")
-        print(f"  文档: http://{host}:{port}/api/docs")
     else:
         print(f"  API:  http://{host}:{port}/")
         print(f"  文档: http://{host}:{port}/docs")

@@ -1,10 +1,11 @@
 // ========== 全局状态 ==========
 const API_BASE = '/api';
 const HISTORY_KEY = 'idiom_wordle_history';
+const UPLOAD_TIMESTAMP_KEY = 'idiom_wordle_last_upload_ts';
 
-let currentBoard = 'total'; // 'total' | 'daily'
+let currentBoard = 'total';
 let currentDifficulty = 'easy';
-let currentBoardType = 'wins'; // 'wins' | 'win_rate' | 'avg_rounds'
+let currentBoardType = 'wins';
 let myProfile = null;
 
 // ========== 主题初始化 ==========
@@ -58,9 +59,16 @@ function formatDate(timestamp) {
     return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
 }
 
-// 从localStorage获取历史记录
 function getHistoryList() {
     return JSON.parse(localStorage.getItem(HISTORY_KEY) || '[]');
+}
+
+function getLastUploadTimestamp() {
+    return parseInt(localStorage.getItem(UPLOAD_TIMESTAMP_KEY) || '0');
+}
+
+function setLastUploadTimestamp() {
+    localStorage.setItem(UPLOAD_TIMESTAMP_KEY, String(Date.now()));
 }
 
 // API请求封装
@@ -99,7 +107,6 @@ function switchBoard(board) {
         btn.classList.toggle('active', btn.dataset.board === board);
     });
     
-    // 显示/隐藏日榜相关元素
     document.getElementById('totalBoardTabs').style.display = board === 'total' ? 'flex' : 'none';
     document.getElementById('dailyDate').style.display = board === 'daily' ? 'block' : 'none';
     
@@ -150,7 +157,6 @@ function renderProfile() {
     document.getElementById('profileId').textContent = `ID: ${myProfile.user_id}`;
     document.getElementById('profileLocation').textContent = `📍 ${myProfile.ip_location}`;
     
-    // 渲染统计
     const statsEl = document.getElementById('profileStats');
     const diffs = [
         { key: 'easy', name: '简单' },
@@ -264,7 +270,6 @@ function renderTotalBoard(data, myRankEl) {
         `;
     }).join('');
     
-    // 显示我的名次
     const myRank = data.my_rank?.[currentBoardType];
     if (myProfile && myRank && myRank > 100) {
         const myStats = myProfile;
@@ -338,7 +343,6 @@ function renderDailyBoard(data, myRankEl) {
         `;
     }).join('');
     
-    // 显示我的名次
     const myRank = data.my_rank;
     if (myProfile && myRank && myRank > 100) {
         myRankEl.style.display = 'block';
@@ -375,27 +379,36 @@ function showUploadDialog() {
     const titleEl = document.getElementById('uploadModalTitle');
     const usernameInput = document.getElementById('usernameInput');
     
-    // 根据是否已有存档设置标题
     if (myProfile) {
         titleEl.textContent = '追加新战绩';
-        usernameInput.value = myProfile.username;
-        usernameInput.placeholder = '留空则使用现有用户名';
+        usernameInput.value = '';
+        usernameInput.placeholder = '留空则不修改用户名';
     } else {
         titleEl.textContent = '上传战绩创建存档';
         usernameInput.value = '';
         usernameInput.placeholder = '输入您的用户名';
     }
     
-    // 显示本地统计
     const statsEl = document.getElementById('uploadStats');
     if (history.length === 0) {
         statsEl.innerHTML = '<p style="color: var(--absent);">本地没有历史记录</p>';
     } else {
         const wonCount = history.filter(h => h.status === 'won').length;
-        statsEl.innerHTML = `
-            <p><strong>本地记录统计：</strong></p>
-            <p>共 ${history.length} 局，胜利 ${wonCount} 局，失败 ${history.length - wonCount} 局</p>
-        `;
+        if (myProfile) {
+            const lastTs = getLastUploadTimestamp();
+            const newRecords = history.filter(h => h.timestamp > lastTs);
+            const newWon = newRecords.filter(h => h.status === 'won').length;
+            statsEl.innerHTML = `
+                <p><strong>新战绩统计：</strong></p>
+                <p>自上次上传以来新增 ${newRecords.length} 局，胜利 ${newWon} 局</p>
+                <p style="font-size:0.85em;color:var(--text-secondary);">系统将自动只上传新记录，避免重复统计</p>
+            `;
+        } else {
+            statsEl.innerHTML = `
+                <p><strong>本地记录统计：</strong></p>
+                <p>共 ${history.length} 局，胜利 ${wonCount} 局，失败 ${history.length - wonCount} 局</p>
+            `;
+        }
     }
     
     modal.classList.add('active');
@@ -421,8 +434,18 @@ async function doUpload() {
         return;
     }
     
-    // 转换历史记录为API格式
-    const records = history.map(h => ({
+    // 筛选记录：追加模式只传新记录，首次上传传全部
+    let recordsToUpload = history;
+    if (myProfile) {
+        const lastTs = getLastUploadTimestamp();
+        recordsToUpload = history.filter(h => h.timestamp > lastTs);
+        if (recordsToUpload.length === 0) {
+            await CWDialog.alert('没有新的战绩记录需要追加');
+            return;
+        }
+    }
+    
+    const records = recordsToUpload.map(h => ({
         game_id: h.gameId || `local_${h.timestamp}`,
         mode: h.mode,
         difficulty: h.difficulty,
@@ -434,20 +457,19 @@ async function doUpload() {
     try {
         let result;
         if (myProfile) {
-            // 追加
             result = await apiFetch('/leaderboard/append', {
                 method: 'POST',
                 body: { username, records }
             });
         } else {
-            // 首次上传
             result = await apiFetch('/leaderboard/upload', {
                 method: 'POST',
                 body: { username, records }
             });
         }
         
-        await CWDialog.success(result.message || '上传成功！');
+        await CWDialog.alert(result.message || '上传成功！', { title: '成功' });
+        setLastUploadTimestamp();
         closeUploadModal();
         await loadMyProfile();
         await loadLeaderboard();
@@ -465,8 +487,8 @@ async function confirmDeleteProfile() {
     
     if (ok) {
         try {
-            await apiFetch('/leaderboard/profile/me', { method: 'DELETE' });
-            await CWDialog.success('存档已删除');
+            await apiFetch('/leaderboard/profile/delete', { method: 'POST' });
+            await CWDialog.alert('存档已删除', { title: '成功' });
             await loadMyProfile();
             await loadLeaderboard();
         } catch (e) {

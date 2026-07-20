@@ -772,6 +772,10 @@ def delete_user(user_id: str) -> int:
                 cursor = conn.execute(
                     f"DELETE FROM top_daily WHERE user_id = {ph}", (user_id,))
                 deleted += cursor.rowcount
+                # 删除已上传游戏记录（去重表）
+                cursor = conn.execute(
+                    f"DELETE FROM top_user_games WHERE user_id = {ph}", (user_id,))
+                deleted += cursor.rowcount
                 # 删除用户
                 cursor = conn.execute(
                     f"DELETE FROM top_user WHERE user_id = {ph}", (user_id,))
@@ -794,6 +798,9 @@ def delete_user(user_id: str) -> int:
                     revoke_cookie(row['cookie_token'])
                 cursor.execute(
                     "DELETE FROM top_daily WHERE user_id = %s", (user_id,))
+                deleted += cursor.rowcount
+                cursor.execute(
+                    "DELETE FROM top_user_games WHERE user_id = %s", (user_id,))
                 deleted += cursor.rowcount
                 cursor.execute(
                     "DELETE FROM top_user WHERE user_id = %s", (user_id,))
@@ -1150,6 +1157,10 @@ def clean_inactive_users(inactive_days: int) -> int:
                 cursor = conn.execute(
                     "DELETE FROM top_daily WHERE user_id IN (SELECT user_id FROM top_user WHERE update_time < datetime('now', '-' || ? || ' days'))", (inactive_days,))
                 deleted += cursor.rowcount
+                # 删除已上传游戏记录（去重表）
+                cursor = conn.execute(
+                    "DELETE FROM top_user_games WHERE user_id IN (SELECT user_id FROM top_user WHERE update_time < datetime('now', '-' || ? || ' days'))", (inactive_days,))
+                deleted += cursor.rowcount
                 # 删除用户
                 cursor = conn.execute(
                     "DELETE FROM top_user WHERE update_time < datetime('now', '-' || ? || ' days')", (inactive_days,))
@@ -1170,6 +1181,9 @@ def clean_inactive_users(inactive_days: int) -> int:
                     "DELETE FROM top_daily WHERE user_id IN (SELECT user_id FROM top_user WHERE update_time < DATE_SUB(NOW(), INTERVAL %s DAY))", (inactive_days,))
                 deleted += cursor.rowcount
                 cursor.execute(
+                    "DELETE FROM top_user_games WHERE user_id IN (SELECT user_id FROM top_user WHERE update_time < DATE_SUB(NOW(), INTERVAL %s DAY))", (inactive_days,))
+                deleted += cursor.rowcount
+                cursor.execute(
                     "DELETE FROM top_user WHERE update_time < DATE_SUB(NOW(), INTERVAL %s DAY)", (inactive_days,))
                 deleted += cursor.rowcount
             conn.commit()
@@ -1180,9 +1194,66 @@ def clean_inactive_users(inactive_days: int) -> int:
 
 
 def get_existing_game_ids(user_id: str) -> set[str]:
-    """获取用户已上传的game_id集合，用于去重
+    """获取用户已上传的game_id集合，用于去重防止刷记录"""
+    cfg = get_config()
+    game_ids = set()
+    ph = _placeholder()
+    if cfg.type == DatabaseType.sqlite:
+        with _sqlite_lock:
+            conn = _get_sqlite_conn()
+            try:
+                cursor = conn.execute(
+                    f"SELECT game_id FROM top_user_games WHERE user_id = {ph}", (user_id,))
+                for row in cursor.fetchall():
+                    game_ids.add(row[0])
+            finally:
+                conn.close()
+    else:
+        conn = _get_mysql_conn()
+        try:
+            with conn.cursor() as cursor:
+                cursor.execute(
+                    "SELECT game_id FROM top_user_games WHERE user_id = %s", (user_id,))
+                for row in cursor.fetchall():
+                    game_ids.add(row['game_id'])
+        finally:
+            conn.close()
+    return game_ids
 
-    由于top_user表只存储统计数据不存储明细game_id，
-    去重逻辑由前端保证只上传新记录，这里直接返回空集合
-    """
-    return set()
+
+def record_uploaded_games(user_id: str, records: list[dict]) -> int:
+    """记录用户已上传的game_id，返回实际新增的数量（去重后）"""
+    cfg = get_config()
+    ph = _placeholder()
+    added = 0
+    if cfg.type == DatabaseType.sqlite:
+        with _sqlite_lock:
+            conn = _get_sqlite_conn()
+            try:
+                for rec in records:
+                    try:
+                        conn.execute(
+                            f"INSERT OR IGNORE INTO top_user_games (user_id, game_id, timestamp) VALUES ({ph}, {ph}, {ph})",
+                            (user_id, rec['game_id'], rec['timestamp']))
+                        added += conn.total_changes and 1 or 0
+                    except Exception:
+                        pass
+                conn.commit()
+            finally:
+                conn.close()
+    else:
+        conn = _get_mysql_conn()
+        try:
+            with conn.cursor() as cursor:
+                for rec in records:
+                    try:
+                        cursor.execute(
+                            "INSERT IGNORE INTO top_user_games (user_id, game_id, timestamp) VALUES (%s, %s, %s)",
+                            (user_id, rec['game_id'], rec['timestamp']))
+                        added += cursor.rowcount
+                    except Exception:
+                        pass
+            conn.commit()
+        finally:
+            conn.close()
+    return added

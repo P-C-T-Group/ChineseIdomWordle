@@ -125,22 +125,34 @@ def get_or_create_user_from_cookie(cookie_token: Optional[str], username: str, c
     return user, new_cookie, True
 
 
+def _filter_new_records(user_id: str, records: List[GameRecordItem]) -> List[GameRecordItem]:
+    """过滤掉用户已经上传过的game_id，防止重复统计"""
+    existing_ids = db_manager.get_existing_game_ids(user_id)
+    new_records = []
+    for r in records:
+        if not r.game_id or r.game_id not in existing_ids:
+            new_records.append(r)
+    return new_records
+
+
+def _records_to_dicts(records: List[GameRecordItem]) -> list[dict]:
+    """将Pydantic记录转换为字典列表"""
+    return [{
+        'game_id': r.game_id or f"local_{r.timestamp}",
+        'timestamp': r.timestamp
+    } for r in records]
+
+
 def upload_records(cookie_token: Optional[str], username: str, records: List[GameRecordItem], client_ip: str) -> Tuple[Dict[str, Any], str, bool]:
     """上传战绩（首次）
 
     返回: (用户信息, cookie_token, is_new_user)
     """
-    # 验证记录
-    valid, msg, stats = validate_records_for_upload(records)
-    if not valid:
-        raise ValueError(msg)
-
     # 获取或创建用户
     user, cookie_token, is_new = get_or_create_user_from_cookie(
         cookie_token, username, client_ip)
 
     if not is_new:
-        # 如果用户已存在，检查是否已有统计（追加逻辑应该用append接口）
         existing_total = sum([
             user.get('easy_total', 0),
             user.get('medium_total', 0),
@@ -149,8 +161,14 @@ def upload_records(cookie_token: Optional[str], username: str, records: List[Gam
         if existing_total > 0:
             raise ValueError("您已有存档，请使用追加接口上传新记录")
 
-    # 更新用户统计
+    # 验证记录（全量验证）
+    valid, msg, stats = validate_records_for_upload(records)
+    if not valid:
+        raise ValueError(msg)
+
     user_id = user['user_id']
+
+    # 更新用户统计
     for diff, s in stats.items():
         if s['total'] > 0:
             db_manager.update_user_stats(
@@ -160,11 +178,13 @@ def upload_records(cookie_token: Optional[str], username: str, records: List[Gam
                 win_rounds_delta=s['win_rounds']
             )
 
+    # 记录已上传的game_id
+    db_manager.record_uploaded_games(user_id, _records_to_dicts(records))
+
     # 更新用户名（如果用户提供了新的用户名）
     if username and username != user['username']:
         db_manager.update_username(user_id, username)
 
-    # 重新获取最新的用户信息
     user = db_manager.get_user_by_id(user_id)
     if user is None:
         raise RuntimeError(f"更新后查询用户失败: user_id={user_id}")
@@ -172,7 +192,10 @@ def upload_records(cookie_token: Optional[str], username: str, records: List[Gam
 
 
 def append_records(cookie_token: str, records: List[GameRecordItem]) -> Dict[str, Any]:
-    """追加战绩（已有存档的用户）"""
+    """追加战绩（已有存档的用户）
+
+    会自动过滤已经上传过的game_id，防止重复统计刷记录
+    """
     if not cookie_token:
         raise ValueError("未找到您的存档，请先上传战绩创建存档")
 
@@ -180,13 +203,20 @@ def append_records(cookie_token: str, records: List[GameRecordItem]) -> Dict[str
     if not user:
         raise ValueError("存档无效或已被删除")
 
+    user_id = user['user_id']
+
+    # 过滤掉已经上传过的game_id（后端去重，防止修改本地缓存刷记录）
+    new_records = _filter_new_records(user_id, records)
+
+    if len(new_records) == 0:
+        raise ValueError("没有新的战绩记录需要追加（所有记录已上传过）")
+
     # 验证新记录
-    valid, msg, new_stats = validate_records_for_append(user, records)
+    valid, msg, new_stats = validate_records_for_append(user, new_records)
     if not valid:
         raise ValueError(msg)
 
     # 更新用户统计
-    user_id = user['user_id']
     for diff, s in new_stats.items():
         if s['total'] > 0:
             db_manager.update_user_stats(
@@ -196,7 +226,9 @@ def append_records(cookie_token: str, records: List[GameRecordItem]) -> Dict[str
                 win_rounds_delta=s['win_rounds']
             )
 
-    # 重新获取最新的用户信息
+    # 记录已上传的game_id
+    db_manager.record_uploaded_games(user_id, _records_to_dicts(new_records))
+
     user = db_manager.get_user_by_id(user_id)
     if user is None:
         raise RuntimeError(f"更新后查询用户失败: user_id={user_id}")

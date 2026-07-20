@@ -63,3 +63,14 @@ CREATE TABLE IF NOT EXISTS lb_revoked_cookies (
     cookie_token TEXT PRIMARY KEY,
     revoke_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
+
+-- 排行榜：用户已上传的对局记录（用于去重，防止刷记录）
+CREATE TABLE IF NOT EXISTS top_user_games (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id TEXT NOT NULL,
+    game_id TEXT NOT NULL,
+    timestamp INTEGER NOT NULL DEFAULT 0,
+    create_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(user_id, game_id)
+);
+CREATE INDEX IF NOT EXISTS idx_top_user_games_uid ON top_user_games(user_id);

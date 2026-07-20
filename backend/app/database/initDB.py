@@ -93,6 +93,17 @@ def _init_sqlite():
                 cookie_token TEXT PRIMARY KEY,
                 revoke_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             );
+
+            -- 排行榜：用户已上传的对局记录（用于去重，防止刷记录）
+            CREATE TABLE IF NOT EXISTS top_user_games (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id TEXT NOT NULL,
+                game_id TEXT NOT NULL,
+                timestamp INTEGER NOT NULL DEFAULT 0,
+                create_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                UNIQUE(user_id, game_id)
+            );
+            CREATE INDEX IF NOT EXISTS idx_top_user_games_uid ON top_user_games(user_id);
         """)
         conn.commit()
         log.info("[DB] SQLite 数据库初始化成功")
@@ -259,6 +270,26 @@ def _init_mysql():
                     `revoke_time` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP
                 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
             """)
+
+            # 创建用户已上传对局记录表 top_user_games（用于去重）
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS `top_user_games` (
+                    `id` INT AUTO_INCREMENT PRIMARY KEY,
+                    `user_id` varchar(32) NOT NULL,
+                    `game_id` varchar(64) NOT NULL,
+                    `timestamp` BIGINT NOT NULL DEFAULT 0,
+                    `create_time` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                    UNIQUE KEY `uniq_user_game` (`user_id`, `game_id`)
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+            """)
+            try:
+                cursor.execute(
+                    "CREATE INDEX `TOP_USER_GAMES_UID` ON `top_user_games` (`user_id`)")
+            except (ProgrammingError, OperationalError) as e:
+                if getattr(e, 'args', None) and e.args[0] == 1061:
+                    pass
+                else:
+                    raise
 
         conn.commit()
         log.info("[DB] MySQL 数据库初始化成功")
