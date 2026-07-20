@@ -553,17 +553,31 @@ async def api_submit_daily(req: SubmitDailyRequest, request: Request):
         raise HTTPException(status_code=400, detail="未找到存档，无法提交日榜成绩")
 
     try:
-        success = leaderboard_service.submit_daily_score(
+        submit_success, won_rank = leaderboard_service.submit_daily_score(
             cookie_token, req.game_id, req.difficulty, req.won, req.rounds
         )
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
 
+    if not submit_success:
+        # 重复提交
+        if won_rank:
+            message = "今日已提交过胜利成绩，已在日榜中"
+        else:
+            message = "今日已提交过挑战，首次未胜利无法再次登榜"
+    else:
+        # 第一次提交
+        if won_rank:
+            message = "恭喜！成绩已成功提交到日榜"
+        else:
+            message = "本次挑战失败，今日已无法再登日榜"
+
     return {
         'code': 200,
         'status': 'success',
-        'message': "今日成绩已提交" if success else "今日成绩已提交过",
-        'duplicate': not success
+        'message': message,
+        'duplicate': not submit_success,
+        'on_board': won_rank
     }
 
 

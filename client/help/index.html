@@ -203,6 +203,42 @@
         </div>
 
         <div class="helpSection">
+            <h2 class="sectionTitle">排行榜规则</h2>
+            <div class="sectionContent">
+                <h3 style="margin: 16px 0 8px 0; font-size: 1.1em;">总榜规则</h3>
+                <ul class="helpList">
+                    <li>首次上传存档需要至少 <strong>20局</strong> 对战记录</li>
+                    <li>已有存档用户每次追加新战绩需要至少 <strong>5局</strong> 新记录</li>
+                    <li>同一对局记录只会被统计一次，后端自动去重防止刷分</li>
+                    <li>胜率榜仅统计至少玩了 <strong>10局</strong> 以上的用户，避免偶然高胜率</li>
+                    <li>总榜分为胜利数、胜率、平均回合数三个维度，各难度独立排名</li>
+                    <li>平均回合数越低、胜率越高、胜利数越多，排名越靠前</li>
+                </ul>
+
+                <h3 style="margin: 20px 0 8px 0; font-size: 1.1em;">日榜规则（每日挑战）</h3>
+                <ul class="helpList">
+                    <li>每日挑战模式下，每个用户每天有 <strong>1次</strong> 登榜机会</li>
+                    <li>当天任意难度的 <strong>第一次挑战</strong> 即占用当日名额：
+                        <ul style="margin-top: 4px; padding-left: 20px;">
+                            <li>若第一次挑战胜利，成绩会按对应难度录入日榜</li>
+                            <li>若第一次挑战失败，当日后续即使胜利也无法再登榜</li>
+                        </ul>
+                    </li>
+                    <li>日榜按难度分开排名，以 <strong>使用回合数越少越靠前</strong> 排序</li>
+                    <li>只有胜利的成绩会显示在日榜中，失败记录不参与排名</li>
+                    <li>无限模式的成绩不影响日榜，两种模式统计独立</li>
+                </ul>
+
+                <h3 style="margin: 20px 0 8px 0; font-size: 1.1em;">其他说明</h3>
+                <ul class="helpList">
+                    <li>存档通过浏览器Cookie保存，清除Cookie会导致存档丢失，请谨慎操作</li>
+                    <li>排行榜每日自动清理超过90天不活跃的用户存档</li>
+                    <li>管理员有权删除异常刷分的存档记录</li>
+                </ul>
+            </div>
+        </div>
+
+        <div class="helpSection">
             <h2 class="sectionTitle">其他功能</h2>
             <div class="sectionContent">
                 <ul class="helpList">

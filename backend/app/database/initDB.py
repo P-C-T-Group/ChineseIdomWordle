@@ -83,7 +83,7 @@ def _init_sqlite():
             CREATE INDEX IF NOT EXISTS idx_top_user_cookie ON top_user(cookie_token);
 
             -- 排行榜：每日挑战对局明细表
-            -- 每个用户每天每个难度只能提交一次成绩
+            -- 每个用户每天同一种模式只能提交一次成绩（daily模式每天仅第一次胜利可提交，任意难度）
             CREATE TABLE IF NOT EXISTS top_daily (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 user_id TEXT NOT NULL,
@@ -94,7 +94,7 @@ def _init_sqlite():
                 rounds INTEGER NOT NULL DEFAULT 0,
                 play_date TEXT NOT NULL DEFAULT '',
                 create_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                UNIQUE(user_id, difficulty, play_date)
+                UNIQUE(user_id, play_date, mode)
             );
             CREATE INDEX IF NOT EXISTS idx_top_daily_user ON top_daily(user_id);
             CREATE INDEX IF NOT EXISTS idx_top_daily_diff ON top_daily(difficulty);
@@ -272,7 +272,7 @@ def _init_mysql():
                     `rounds` INT NOT NULL DEFAULT 0,
                     `play_date` varchar(10) NOT NULL DEFAULT '',
                     `create_time` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
-                    UNIQUE KEY `uniq_user_date_diff` (`user_id`, `difficulty`, `play_date`)
+                    UNIQUE KEY `uniq_user_date_mode` (`user_id`, `play_date`, `mode`)
                 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
             """)
             for idx_name, sql in [

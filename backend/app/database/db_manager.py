@@ -973,6 +973,46 @@ def add_daily_record(user_id: str, game_id: str, difficulty: str, mode: str, won
         return False
 
 
+def get_user_daily_record(user_id: str, play_date: str, mode: str) -> Optional[Dict[str, Any]]:
+    """查询用户指定日期指定模式的日榜记录"""
+    import sqlite3
+    import pymysql
+    cfg = get_config()
+    ph = _placeholder()
+    try:
+        if cfg.type == DatabaseType.sqlite:
+            with _sqlite_lock:
+                conn = _get_sqlite_conn()
+                try:
+                    query = f"""
+                        SELECT user_id, game_id, difficulty, mode, won, rounds, play_date
+                        FROM top_daily
+                        WHERE user_id = {ph} AND play_date = {ph} AND mode = {ph}
+                    """
+                    cursor = conn.execute(query, (user_id, play_date, mode))
+                    row = cursor.fetchone()
+                    return dict(row) if row else None
+                finally:
+                    conn.close()
+        else:
+            conn = _get_mysql_conn()
+            try:
+                with conn.cursor() as cursor:
+                    query = """
+                        SELECT user_id, game_id, difficulty, mode, won, rounds, play_date
+                        FROM top_daily
+                        WHERE user_id = %s AND play_date = %s AND mode = %s
+                    """
+                    cursor.execute(query, (user_id, play_date, mode))
+                    row = cursor.fetchone()
+                    return row
+            finally:
+                conn.close()
+    except Exception as err:
+        log.error(f"[DB] 查询用户日榜记录失败: {err}")
+        return None
+
+
 def get_leaderboard(difficulty: str, board_type: str, limit: int = 100, user_id: Optional[str] = None) -> tuple[list[Dict[str, Any]], Optional[int]]:
     """获取用户排行榜
 
@@ -1309,7 +1349,8 @@ def record_uploaded_games(user_id: str, records: list[dict]) -> int:
                             (user_id, rec['game_id'], rec['timestamp']))
                         added += conn.total_changes and 1 or 0
                     except Exception as e:
-                        log.warning(f"[DB] 跳过上传记录写入失败 user_id={user_id}, game_id={rec.get('game_id')}, err={e}")
+                        log.warning(
+                            f"[DB] 跳过上传记录写入失败 user_id={user_id}, game_id={rec.get('game_id')}, err={e}")
                 conn.commit()
             finally:
                 conn.close()

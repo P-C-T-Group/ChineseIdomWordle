@@ -235,8 +235,13 @@ def append_records(cookie_token: str, records: List[GameRecordItem]) -> Dict[str
     return user
 
 
-def submit_daily_score(cookie_token: str, game_id: str, difficulty: str, won: bool, rounds: int) -> bool:
-    """提交每日挑战成绩到日榜"""
+def submit_daily_score(cookie_token: str, game_id: str, difficulty: str, won: bool, rounds: int) -> Tuple[bool, bool]:
+    """提交每日挑战成绩到日榜
+
+    返回: (提交是否成功, 是否胜利上榜)
+    - 同一用户每天daily模式只能提交一次成绩（第一次挑战即占用名额）
+    - 只有第一次挑战胜利才会上榜，失败则当日后续再胜利也无法提交
+    """
     if not cookie_token:
         raise ValueError("未找到您的存档，无法提交日榜成绩")
 
@@ -247,8 +252,9 @@ def submit_daily_score(cookie_token: str, game_id: str, difficulty: str, won: bo
     user_id = user['user_id']
     today = date.today().isoformat()
 
-    # 添加日榜记录（已存在则返回False）
-    return db_manager.add_daily_record(
+    # 不管胜负都尝试插入记录，利用唯一约束占用当日名额
+    # 失败的记录不会出现在日榜中（查询时过滤won=1），但会阻止后续提交
+    success = db_manager.add_daily_record(
         user_id=user_id,
         game_id=game_id,
         difficulty=difficulty,
@@ -257,6 +263,18 @@ def submit_daily_score(cookie_token: str, game_id: str, difficulty: str, won: bo
         rounds=rounds,
         play_date=today
     )
+
+    if not success:
+        # 已经提交过，查询之前的结果判断是否上榜
+        existing_record = db_manager.get_user_daily_record(
+            user_id, today, 'daily')
+        if existing_record and existing_record['won'] == 1:
+            return False, True  # 之前已经胜利上榜
+        else:
+            return False, False  # 之前失败，无法上榜
+
+    # 第一次提交，返回是否胜利上榜
+    return True, won
 
 
 def get_leaderboard_data(difficulty: str, user_id: Optional[str] = None) -> Dict[str, Any]:
