@@ -1,0 +1,451 @@
+openapi: 3.0.1
+info:
+  title: ''
+  description: ''
+  version: 1.0.0
+paths:
+  /api/leaderboard/upload:
+    post:
+      summary: 排行存档：创建存档
+      deprecated: false
+      description: 首次上传战绩到排行榜
+      operationId: api_upload_leaderboard_api_leaderboard_upload_post
+      tags:
+        - api/leaderboard
+      parameters: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                username:
+                  type: string
+                  title: 用户名
+                records:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      gameId:
+                        type: string
+                        title: 游戏ID
+                      mode:
+                        type: string
+                        title: 模式
+                      difficulty:
+                        type: string
+                        title: 难度
+                      status:
+                        type: string
+                        title: 游戏状态
+                      rounds:
+                        type: integer
+                        title: 回合数
+                      timestamp:
+                        type: integer
+                        title: 创建时间
+                    x-apifox-orders:
+                      - gameId
+                      - mode
+                      - difficulty
+                      - status
+                      - rounds
+                      - timestamp
+                    required:
+                      - gameId
+                      - mode
+                      - difficulty
+                      - status
+                      - rounds
+                      - timestamp
+                    nullable: true
+                  title: 建档记录
+              required:
+                - username
+                - records
+              x-apifox-orders:
+                - username
+                - records
+            example:
+              username: 小明
+              records:
+                - game_id: local_1721452800000
+                  mode: unlimited
+                  difficulty: easy
+                  status: won
+                  rounds: 4
+                  timestamp: 1721452800000
+                - game_id: local_1721539200000
+                  mode: unlimited
+                  difficulty: easy
+                  status: lost
+                  rounds: 16
+                  timestamp: 1721539200000
+                - game_id: daily_2026-07-20
+                  mode: daily
+                  difficulty: medium
+                  status: won
+                  rounds: 6
+                  timestamp: 1721625600000
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  code:
+                    type: integer
+                    title: httpCode
+                  status:
+                    type: string
+                    title: 请求状态
+                  userId:
+                    type: string
+                    title: 用户ID
+                  username:
+                    type: string
+                    title: 用户名
+                  ipLocation:
+                    type: string
+                    title: IP属地
+                    nullable: true
+                  message:
+                    type: string
+                    title: 请求信息
+                    nullable: true
+                  stats:
+                    type: object
+                    properties:
+                      easy:
+                        type: object
+                        properties:
+                          total:
+                            type: integer
+                          won:
+                            type: integer
+                          winRate:
+                            type: number
+                          avgRounds:
+                            type: integer
+                        required:
+                          - total
+                          - won
+                          - winRate
+                          - avgRounds
+                        x-apifox-orders:
+                          - total
+                          - won
+                          - winRate
+                          - avgRounds
+                      medium:
+                        type: object
+                        properties:
+                          total:
+                            type: integer
+                          won:
+                            type: integer
+                          winRate:
+                            type: integer
+                          avgRounds:
+                            type: integer
+                        required:
+                          - total
+                          - won
+                          - winRate
+                          - avgRounds
+                        x-apifox-orders:
+                          - total
+                          - won
+                          - winRate
+                          - avgRounds
+                      hard:
+                        type: object
+                        properties:
+                          total:
+                            type: integer
+                          won:
+                            type: integer
+                          winRate:
+                            type: integer
+                          avgRounds:
+                            type: integer
+                        required:
+                          - total
+                          - won
+                          - winRate
+                          - avgRounds
+                        x-apifox-orders:
+                          - total
+                          - won
+                          - winRate
+                          - avgRounds
+                    x-apifox-orders:
+                      - easy
+                      - medium
+                      - hard
+                    required:
+                      - easy
+                      - medium
+                      - hard
+                    title: 状态
+                    nullable: true
+                required:
+                  - code
+                  - status
+                  - userId
+                  - username
+                  - ipLocation
+                x-apifox-orders:
+                  - code
+                  - status
+                  - userId
+                  - username
+                  - ipLocation
+                  - message
+                  - stats
+              example:
+                code: 200
+                status: success
+                user_id: TVVMKK3G
+                username: 小明
+                ip_location: 内网/保留地址
+                message: 存档创建成功！
+                stats:
+                  easy:
+                    total: 2
+                    won: 1
+                    win_rate: 0.5
+                    avg_rounds: 4
+                  medium:
+                    total: 1
+                    won: 1
+                    win_rate: 1
+                    avg_rounds: 6
+                  hard:
+                    total: 0
+                    won: 0
+                    win_rate: 0
+                    avg_rounds: 0
+          headers: {}
+          x-apifox-name: ''
+        '400':
+          description: ''
+          content:
+            application/json:
+              schema:
+                title: ''
+                type: object
+                properties:
+                  code:
+                    type: integer
+                    title: httpCode
+                    x-apifox-mock: '{{$number.int}}'
+                  status:
+                    type: string
+                    x-apifox-mock: '{{$string.alpha}}'
+                    title: 请求状态
+                  message:
+                    type: string
+                    title: 详细信息
+                x-apifox-orders:
+                  - code
+                  - status
+                  - message
+                required:
+                  - code
+                  - status
+              examples:
+                '4':
+                  summary: 传入数据校验失败
+                  value:
+                    code: 400
+                    status: fali
+                    message: 字"一"不在候选字中
+                '5':
+                  summary: 游戏不存在
+                  value:
+                    code: 400
+                    status: fail
+                    message: 游戏不存在
+                '6':
+                  summary: 游戏状态不符合要求
+                  value:
+                    code: 400
+                    status: fail
+                    message: 本局游戏已结束,状态不为playing
+          headers: {}
+          x-apifox-name: 请求内容未预期
+        '401':
+          description: ''
+          content:
+            application/json:
+              schema:
+                title: ''
+                type: object
+                properties:
+                  code:
+                    type: integer
+                    title: httpCode
+                    description: http标准响应代码
+                    x-apifox-mock: '{{$number.int}}'
+                  status:
+                    type: string
+                    title: 请求状态
+                    x-apifox-mock: '{{$string.alpha}}'
+                  message:
+                    type: string
+                    title: 详细信息
+                x-apifox-orders:
+                  - code
+                  - status
+                  - message
+                required:
+                  - code
+                  - status
+              example:
+                code: 401
+                status: fail
+                message: 缺少Authorization请求头
+          headers: {}
+          x-apifox-name: 未认证
+        '403':
+          description: ''
+          content:
+            application/json:
+              schema:
+                title: ''
+                type: object
+                properties:
+                  code:
+                    type: integer
+                    title: httpCode
+                    x-apifox-mock: '{{$number.int}}'
+                  status:
+                    type: string
+                    title: 请求状态
+                    x-apifox-mock: '{{$string.alpha}}'
+                  message:
+                    type: string
+                    title: 详细信息
+                x-apifox-orders:
+                  - code
+                  - status
+                  - message
+                required:
+                  - code
+                  - status
+              example:
+                code: 403
+                status: fail
+                message: not admin
+          headers: {}
+          x-apifox-name: 无权限
+        '405':
+          description: ''
+          content:
+            application/json:
+              schema:
+                title: ''
+                type: object
+                properties:
+                  code:
+                    type: integer
+                    title: httpCode
+                  message:
+                    type: string
+                    title: 详细信息
+                  status:
+                    type: string
+                    title: 请求状态
+                x-apifox-orders:
+                  - code
+                  - status
+                  - message
+                required:
+                  - code
+                  - status
+              example:
+                code: 405
+                status: fail
+                message: Method Not Allowed
+          headers: {}
+          x-apifox-name: 方法不许可
+        '422':
+          description: ''
+          content:
+            application/json:
+              schema:
+                title: ''
+                type: object
+                properties:
+                  code:
+                    type: integer
+                    title: httpCode
+                  status:
+                    type: string
+                    title: 请求状态
+                  message:
+                    type: string
+                    title: 详细信息
+                x-apifox-orders:
+                  - code
+                  - status
+                  - message
+                required:
+                  - code
+                  - status
+              example:
+                code: 422
+                status: fail
+                message: guess 参数非法：Value error, 必须输入4字成语
+          headers: {}
+          x-apifox-name: 请求体有误
+        '500':
+          description: ''
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  code:
+                    type: integer
+                    title: httpCode
+                  status:
+                    type: string
+                    title: 请求状态
+                  message:
+                    type: string
+                    title: 详细信息
+                required:
+                  - code
+                  - status
+                x-apifox-orders:
+                  - code
+                  - status
+                  - message
+              example:
+                code: 500
+                status: fail
+                message: 服务器内部异常，请稍后重试
+          headers: {}
+          x-apifox-name: 内部错误
+      security: []
+      x-apifox-folder: api/leaderboard
+      x-apifox-status: released
+      x-run-in-apifox: https://app.apifox.com/web/project/8546191/apis/api-489687053-run
+components:
+  schemas: {}
+  securitySchemes:
+    普通token鉴权:
+      type: bearer
+      scheme: bearer
+    管理员token验证:
+      type: bearer
+      scheme: bearer
+servers:
+  - url: http://127.0.0.1:8000
+    description: 测试环境
+security: []

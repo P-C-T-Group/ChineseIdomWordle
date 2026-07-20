@@ -2,7 +2,7 @@
 
 以下所有接口信息由FastAPI OpenAPI schema自动生成。
 
-> 📄 **在线API文档**: 请前往[ChineseIdomWordle by PCTG](https://doc.wordle.whj.zdeweb.cn)查看最新版本 API 文档。项目内文档仅供存档。
+> 📄 **在线API文档**: 请前往[ChineseIdomWordle API by P.C.T.G.](https://doc.wordle.whj.zdeweb.cn)查看最新版本 API 文档。项目内文档仅供存档。
 
 ## 接口列表
 
@@ -20,13 +20,13 @@
 
 | 接口 | 方法 | 文件 | 说明 |
 |------|------|------|------|
-| `/api/leaderboard/upload` | POST | [leaderboard_upload.yml](leaderboard_upload.yml) | 首次上传战绩创建存档 |
-| `/api/leaderboard/append` | POST | [leaderboard_append.yml](leaderboard_append.yml) | 追加新战绩到已有存档 |
-| `/api/leaderboard/daily/submit` | POST | [leaderboard_daily_submit.yml](leaderboard_daily_submit.yml) | 提交每日挑战成绩到日榜 |
-| `/api/leaderboard/{difficulty}` | GET | [leaderboard_get.yml](leaderboard_get.yml) | 获取用户总榜（三种榜单） |
-| `/api/leaderboard/{difficulty}/daily` | GET | [leaderboard_daily_get.yml](leaderboard_daily_get.yml) | 获取每日挑战排行榜 |
-| `/api/leaderboard/profile/me` | GET | [leaderboard_profile.yml](leaderboard_profile.yml) | 获取个人存档 |
-| `/api/leaderboard/profile/delete` | GET | [leaderboard_profile_delete.yml](leaderboard_profile_delete.yml) | 删除个人存档 |
+| `/api/leaderboard/upload` | POST | [leaderboard/upload.yml](leaderboard_upload.yml) | 首次上传战绩创建存档 |
+| `/api/leaderboard/append` | POST | [leaderboard/append.yml](leaderboard_append.yml) | 追加新战绩到已有存档 |
+| `/api/leaderboard/daily/submit` | POST | [leaderboard/daily_submit.yml](leaderboard_daily_submit.yml) | 提交每日挑战成绩到日榜 |
+| `/api/leaderboard/{difficulty}` | GET | [leaderboard/get.yml](leaderboard_get.yml) | 获取用户总榜（三种榜单） |
+| `/api/leaderboard/{difficulty}/daily` | GET | [leaderboard/daily_get.yml](leaderboard_daily_get.yml) | 获取每日挑战排行榜 |
+| `/api/leaderboard/profile/me` | GET | [leaderboard/profile.yml](leaderboard_profile.yml) | 获取个人存档 |
+| `/api/leaderboard/profile/delete` | GET | [leaderboard/profile_delete.yml](leaderboard_profile_delete.yml) | 删除个人存档 |
 
 **难度参数 `difficulty` 可选值**:
 - `easy` - 简单
@@ -50,8 +50,8 @@
 | `/api/admin/config/clean` | POST | [admin/cleanGames.yml](admin/cleanGames.yml) | 立即清理过期对局 |
 | `/api/admin/leaderboard/users` | GET | [admin/leaderboard_users.yml](admin/leaderboard_users.yml) | 查询排行榜用户列表 |
 | `/api/admin/leaderboard/delete` | POST | [admin/leaderboard_delete.yml](admin/leaderboard_delete.yml) | 删除用户存档 |
-| `/api/admin/leaderboard/clean-daily` | POST | [admin/leaderboard_clean_daily.yml](admin/leaderboard_clean_daily.yml) | 清空日榜 |
-| `/api/admin/leaderboard/clean-inactive` | POST | [admin/leaderboard_clean_inactive.yml](admin/leaderboard_clean_inactive.yml) | 清理不活跃用户 |
+| `/api/admin/leaderboard/clean-daily` | GET | [admin/leaderboard_clean_daily.yml](admin/leaderboard_clean_daily.yml) | 清空日榜 |
+| `/api/admin/leaderboard/clean-inactive` | GET | [admin/leaderboard_clean_inactive.yml](admin/leaderboard_clean_inactive.yml) | 清理不活跃用户 |
 
 ## 认证说明
 
