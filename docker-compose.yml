@@ -15,12 +15,7 @@
 
 services:
   wordle:
-    build:
-      context: .
-      # 构建参数：国内环境构建使用 true（默认），海外构建请设为 false
-      args:
-        USE_CN_MIRROR: "true"
-    image: chinese-idiom-wordle:latest
+    image: ghcr.io/p-c-t-group/c-i-wordle:latest
     container_name: chinese-idiom-wordle
     restart: unless-stopped
     
