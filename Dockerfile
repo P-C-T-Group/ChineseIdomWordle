@@ -24,7 +24,9 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
     PIP_NO_CACHE_DIR=1 \
     PIP_DISABLE_PIP_VERSION_CHECK=1 \
-    TZ=Asia/Shanghai
+    TZ=Asia/Shanghai \
+    # npm 源通过环境变量配置（国内模式时在 RUN 中覆盖）
+    NPM_CONFIG_REGISTRY=https://registry.npmjs.org
 
 # ──────────────────────────── APT 换源 + 安装 Node.js ────────────────────────────
 RUN set -eux; \
@@ -61,13 +63,11 @@ RUN set -eux; \
     apt-get update && apt-get install -y --no-install-recommends nodejs; \
     # 清理缓存减小镜像体积
     rm -rf /var/lib/apt/lists/*; \
-    # 第五步：Node.js 安装完成后再配置 npm/pip 国内源
+    # 第五步：Node.js 安装完成后再配置 pip 国内源
     if [ "$USE_CN_MIRROR" = "true" ]; then \
         echo "=== 配置 pip 清华源 ==="; \
         pip config set global.index-url https://pypi.tuna.tsinghua.edu.cn/simple; \
         pip config set global.trusted-host pypi.tuna.tsinghua.edu.cn; \
-        echo "=== 配置 npm 淘宝源 ==="; \
-        npm config set registry https://registry.npmmirror.com; \
     fi; \
     # 验证 Node.js 和 npm 版本
     node -v && npm -v
@@ -84,9 +84,15 @@ COPY . /app/
 
 # 安装 Node.js 依赖（javascript-obfuscator，用于前端 JS 混淆）
 # 在 COPY 之后执行，避免被本地空目录覆盖；即使本地有 node_modules 也会重新构建适配容器环境
-# npm 源已在前面根据 USE_CN_MIRROR 配置
+ARG USE_CN_MIRROR=true
 RUN echo "=== 安装 Node.js 依赖（javascript-obfuscator） ===" \
-    && cd /app/tool && npm install --production=false && npm cache clean --force
+    && cd /app/tool \
+    && if [ "$USE_CN_MIRROR" = "true" ]; then \
+         npm install --production=false --registry=https://registry.npmmirror.com; \
+       else \
+         npm install --production=false; \
+       fi \
+    && npm cache clean --force
 
 # 创建用于存放默认文件的目录（挂载空目录时用于恢复）
 RUN mkdir -p /app/defaults/config \
