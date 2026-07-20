@@ -65,12 +65,11 @@ function processFile(filePath, baseUrl, token, antiDebugEnabled) {
     }
 
     // 3. 替换 baseURL
-    let actualBaseUrl = defaultBaseUrl;
     if (baseUrl) {
         let processedBaseUrl = baseUrl.trim();
         processedBaseUrl = processedBaseUrl.replace(/^https?:\/\//i, '');
         processedBaseUrl = processedBaseUrl.replace(/\/+$/, '');
-        actualBaseUrl = processedBaseUrl;
+        const actualBaseUrl = processedBaseUrl;
 
         jsCode = jsCode.split(`//${defaultBaseUrl}`).join(`//${processedBaseUrl}`);
         jsCode = jsCode.split(`http://${defaultBaseUrl}`).join(`http://${processedBaseUrl}`);
