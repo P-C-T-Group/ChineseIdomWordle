@@ -85,19 +85,19 @@ RUN echo "=== 安装 Node.js 依赖（javascript-obfuscator） ===" \
     && npm cache clean --force
 
 # 创建用于存放默认文件的目录（挂载空目录时用于恢复）
-RUN mkdir -p /app/defaults/config \
-    /app/defaults/data \
-    /app/defaults/client \
-    # 使用 Python 脚本处理配置文件（更可靠，避免 sed 转义问题）
-    && python3 /app/setup_config.py \
-    # 保存默认 data 目录内容
-    && cp -r /app/data/* /app/defaults/data/ \
-    # 保存默认 client 目录内容
-    && cp -r /app/client/* /app/defaults/client/ \
-    # 创建必要的目录
-    && mkdir -p /app/logs \
-    # 赋予 entrypoint 执行权限（文件已由 COPY . /app/ 复制）
-    && chmod +x /app/docker-entrypoint.sh
+RUN mkdir -p /app/defaults/config /app/defaults/data /app/defaults/client /app/logs
+
+# 处理默认配置文件
+RUN python3 /app/setup_config.py
+
+# 保存默认 data 目录内容（用于挂载空目录时恢复）
+RUN cp -r /app/data/* /app/defaults/data/
+
+# 保存默认 client 目录内容（用于挂载空目录时恢复）
+RUN cp -r /app/client/* /app/defaults/client/
+
+# 赋予 entrypoint 执行权限
+RUN chmod +x /app/docker-entrypoint.sh
 
 # 暴露服务端口（默认 8000）
 EXPOSE 8000
