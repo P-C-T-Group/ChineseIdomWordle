@@ -740,7 +740,7 @@ async def admin_delete_lb_user(req: AdminDeleteUserRequest, request: Request):
     }
 
 
-@router.post('/admin/leaderboard/clean-daily')
+@router.get('/admin/leaderboard/clean-daily')
 async def admin_clean_daily(request: Request):
     """管理员：手动清空日榜"""
     _, auth_err = _verify_admin(request)
@@ -755,7 +755,7 @@ async def admin_clean_daily(request: Request):
     }
 
 
-@router.post('/admin/leaderboard/clean-inactive')
+@router.get('/admin/leaderboard/clean-inactive')
 async def admin_clean_inactive(request: Request):
     """管理员：手动清理不活跃用户"""
     _, auth_err = _verify_admin(request)

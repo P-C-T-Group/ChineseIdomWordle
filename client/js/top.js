@@ -515,7 +515,7 @@ async function confirmDeleteProfile() {
     
     if (ok) {
         try {
-            await apiFetch('/leaderboard/profile/delete', { method: 'POST' });
+            await apiFetch('/leaderboard/profile/delete', { method: 'GET' });
             await CWDialog.alert('存档已删除', { title: '成功' });
             await loadMyProfile();
             await loadLeaderboard();
