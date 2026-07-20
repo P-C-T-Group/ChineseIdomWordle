@@ -129,7 +129,6 @@ jobs:
             org.opencontainers.image.vendor=P-C-T-Group
             org.opencontainers.image.licenses=MIT
           annotations: |
-            # 同时写入顶层 index（GHCR 页面读取）和每个架构的 manifest
             index,manifest:org.opencontainers.image.title=ChineseIdomWordle
             index,manifest:org.opencontainers.image.description=镜像由 GitHub Actions 于 ${{ steps.meta.outputs.build_time }} 自动构建 | 构建来源提交: ${{ steps.meta.outputs.short_sha }} | 当前稳定版: ${{ steps.meta.outputs.stable_version }}
             index,manifest:org.opencontainers.image.version=${{ steps.meta.outputs.full_version }}
