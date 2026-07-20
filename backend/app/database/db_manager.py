@@ -747,6 +747,10 @@ def create_user(username: str, cookie_token: str, ip_location: str) -> Dict[str,
 
 def update_user_stats(user_id: str, difficulty: str, total_delta: int, won_delta: int, win_rounds_delta: int) -> None:
     """更新用户统计数据"""
+    # 白名单验证：防止SQL注入
+    if difficulty not in ('easy', 'medium', 'hard'):
+        raise ValueError(f"Invalid difficulty: {difficulty}")
+
     cfg = get_config()
     ph = _placeholder()
     total_col = f"{difficulty}_total"
@@ -975,6 +979,12 @@ def get_leaderboard(difficulty: str, board_type: str, limit: int = 100, user_id:
     board_type: 'wins'（胜利数）/ 'win_rate'（胜率）/ 'avg_rounds'（平均回合数）
     返回: (排行榜列表, 当前用户名次)
     """
+    # 白名单验证：防止SQL注入（纵深防御，路由层也有验证）
+    if difficulty not in ('easy', 'medium', 'hard'):
+        raise ValueError(f"Invalid difficulty: {difficulty}")
+    if board_type not in ('wins', 'win_rate', 'avg_rounds'):
+        raise ValueError(f"Invalid board_type: {board_type}")
+
     cfg = get_config()
     total_col = f"{difficulty}_total"
     won_col = f"{difficulty}_won"
@@ -986,13 +996,16 @@ def get_leaderboard(difficulty: str, board_type: str, limit: int = 100, user_id:
     if board_type == 'wins':
         order_clause = f"{won_col} DESC"
         value_expr = won_col
+        cmp_op = '>'  # 值越大排名越靠前
     elif board_type == 'win_rate':
         value_expr = f"CASE WHEN {total_col} > 0 THEN CAST({won_col} AS FLOAT) / {total_col} ELSE 0 END"
         order_clause = f"{value_expr} DESC"
+        cmp_op = '>'  # 值越大排名越靠前
     elif board_type == 'avg_rounds':
         # 只有胜利的才计入平均回合，回合越少越好
         value_expr = f"CASE WHEN {won_col} > 0 THEN CAST({rounds_col} AS FLOAT) / {won_col} ELSE 999 END"
         order_clause = f"{value_expr} ASC"
+        cmp_op = '<'  # 值越小排名越靠前
     else:
         return [], None
 
@@ -1029,7 +1042,7 @@ def get_leaderboard(difficulty: str, board_type: str, limit: int = 100, user_id:
                 if user_id and my_rank is None:
                     rank_query = f"""
                         SELECT COUNT(*) + 1 as rank FROM top_user
-                        WHERE {total_col} >= ? AND {order_clause} < (SELECT {value_expr} FROM top_user WHERE user_id = ?)
+                        WHERE {total_col} >= ? AND {value_expr} {cmp_op} (SELECT {value_expr} FROM top_user WHERE user_id = ?)
                     """
                     cursor = conn.execute(rank_query, (min_games, user_id))
                     rank_row = cursor.fetchone()
@@ -1064,7 +1077,7 @@ def get_leaderboard(difficulty: str, board_type: str, limit: int = 100, user_id:
                 if user_id and my_rank is None:
                     rank_query = f"""
                         SELECT COUNT(*) + 1 as `rank` FROM top_user
-                        WHERE {total_col} >= %s AND {order_clause} < (SELECT {value_expr} FROM top_user WHERE user_id = %s)
+                        WHERE {total_col} >= %s AND {value_expr} {cmp_op} (SELECT {value_expr} FROM top_user WHERE user_id = %s)
                     """
                     cursor.execute(rank_query, (min_games, user_id))
                     rank_row = cursor.fetchone()
@@ -1078,6 +1091,10 @@ def get_leaderboard(difficulty: str, board_type: str, limit: int = 100, user_id:
 
 def get_daily_leaderboard(difficulty: str, play_date: str, limit: int = 100, user_id: Optional[str] = None) -> tuple[list[Dict[str, Any]], Optional[int]]:
     """获取日榜（只看胜利的，按回合数升序）"""
+    # 白名单验证：防止SQL注入
+    if difficulty not in ('easy', 'medium', 'hard'):
+        raise ValueError(f"Invalid difficulty: {difficulty}")
+
     cfg = get_config()
     ph = _placeholder()
     results = []

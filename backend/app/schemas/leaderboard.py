@@ -21,17 +21,17 @@ class GameRecordItem(BaseModel):
 
 class UploadRecordRequest(BaseModel):
     """上传战绩到排行榜的请求体"""
-    username: str = Field(..., min_length=1, max_length=32, description="用户名")
+    username: Optional[str] = Field(
+        "", max_length=32, description="用户名，追加战绩时可留空")
     records: list[GameRecordItem] = Field(...,
                                           min_length=1, description="对局记录列表")
 
     @field_validator("username")
     @classmethod
-    def strip_username(cls, v: str) -> str:
-        v = v.strip()
-        if not v:
-            raise ValueError("用户名不能为空")
-        return v
+    def strip_username(cls, v: Optional[str]) -> str:
+        if v is None:
+            return ""
+        return v.strip()
 
 
 class LeaderboardEntry(BaseModel):

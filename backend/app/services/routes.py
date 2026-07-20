@@ -459,9 +459,14 @@ async def api_upload_leaderboard(req: UploadRecordRequest, request: Request):
     client_ip = get_client_ip(request)
     cookie_token = _get_lb_cookie(request)
 
+    # 首次创建存档必须提供用户名
+    username = (req.username or "").strip()
+    if not cookie_token and not username:
+        raise HTTPException(status_code=400, detail="请输入用户名")
+
     try:
         user, new_cookie, is_new = leaderboard_service.upload_records(
-            cookie_token, req.username, req.records, client_ip
+            cookie_token, username, req.records, client_ip
         )
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
