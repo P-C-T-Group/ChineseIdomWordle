@@ -1,0 +1,109 @@
+name: Build and Push Docker Image
+
+# 触发条件：推送到 main 分支
+on:
+  push:
+    branches:
+      - main
+    # 也可以在发布 release 时触发
+  release:
+    types: [published]
+  # 支持手动触发
+  workflow_dispatch:
+
+# 仓库只读权限需要
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+    steps:
+      # 检出代码
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      # 获取版本号
+      - name: Get version
+        id: version
+        run: |
+          # 尝试获取最新 release 版本
+          LATEST_RELEASE=$(curl -sL \
+            -H "Accept: application/vnd.github+json" \
+            -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
+            "${{ github.api_url }}/repos/${{ github.repository }}/releases/latest" | \
+            jq -r '.tag_name // empty' | sed 's/^v//')
+          
+          if [ -z "$LATEST_RELEASE" ]; then
+            # 没有 release，使用 0.0 作为基础
+            LATEST_RELEASE="0.0"
+          fi
+          
+          echo "Latest release version: $LATEST_RELEASE"
+          
+          # 检查这个主版本下已经有多少个镜像 tag
+          # 拉取现有镜像的标签列表，找到当前主版本最大的补丁号
+          EXISTS_TAGS=$(curl -sL \
+            -H "Accept: application/vnd.github+json" \
+            -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
+            "${{ github.api_url }}/packages/container/c-i-wordle/versions?per_page=100" | \
+            jq -r '.[].metadata.container.tags[] // empty' | grep "^${LATEST_RELEASE//./\\.}\\.[0-9]\+$" || true)
+          
+          if [ -z "$EXISTS_TAGS" ]; then
+            PATCH=1
+          else
+            # 提取补丁号并找最大值
+            MAX_PATCH=$(echo "$EXISTS_TAGS" | sed "s/${LATEST_RELEASE//./\\.}\\.//" | sort -n | tail -n1)
+            PATCH=$((MAX_PATCH + 1))
+          fi
+          
+          NEW_VERSION="${LATEST_RELEASE}.${PATCH}"
+          echo "New version: $NEW_VERSION"
+          
+          echo "version=$NEW_VERSION" >> $GITHUB_OUTPUT
+
+      # 设置 QEMU（用于多架构构建）
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+
+      # 设置 Docker Buildx
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      # 登录 GHCR
+      - name: Login to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      # 配置国内镜像源加速构建
+      - name: Configure Docker mirror
+        run: |
+          echo '{"registry-mirrors": ["https://docker.mirrors.ustc.edu.cn", "https://hub-mirror.c.163.com"]}' | sudo tee /etc/docker/daemon.json
+          sudo systemctl restart docker
+
+      # 构建并推送镜像
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          platforms: linux/amd64,linux/arm64  # 多架构支持，可根据需要删减
+          push: true
+          tags: |
+            ghcr.io/p-c-t-group/c-i-wordle:${{ steps.version.outputs.version }}
+            ghcr.io/p-c-t-group/c-i-wordle:latest
+          build-args: |
+            USE_CN_MIRROR=true
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      # 输出结果
+      - name: Image pushed
+        run: |
+          echo "✅ Docker image pushed successfully!"
+          echo "  Tags:"
+          echo "    ghcr.io/p-c-t-group/c-i-wordle:${{ steps.version.outputs.version }}"
+          echo "    ghcr.io/p-c-t-group/c-i-wordle:latest"
