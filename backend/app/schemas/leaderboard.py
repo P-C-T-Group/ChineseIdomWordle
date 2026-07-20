@@ -15,14 +15,15 @@ class GameRecordItem(BaseModel):
     mode: Literal["daily", "unlimited"] = "unlimited"
     difficulty: Difficulty
     status: Literal["won", "lost"]
-    rounds: int = Field(..., ge=1, le=50, description="用时回合数")
+    rounds: int = Field(..., ge=0, le=50, description="用时回合数")
     timestamp: int = Field(..., ge=0, description="对局时间戳（毫秒）")
 
 
 class UploadRecordRequest(BaseModel):
     """上传战绩到排行榜的请求体"""
     username: str = Field(..., min_length=1, max_length=32, description="用户名")
-    records: list[GameRecordItem] = Field(..., min_length=1, description="对局记录列表")
+    records: list[GameRecordItem] = Field(...,
+                                          min_length=1, description="对局记录列表")
 
     @field_validator("username")
     @classmethod
