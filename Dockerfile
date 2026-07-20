@@ -28,7 +28,7 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 
 # ──────────────────────────── APT 换源 + 安装 Node.js ────────────────────────────
 RUN set -eux; \
-    # 第一步：配置 APT 源
+    # 第一步：配置 APT 源（仅 Debian 基础源，不折腾 NodeSource 镜像）
     if [ "$USE_CN_MIRROR" = "true" ]; then \
         echo "=== [国内模式] 配置清华 APT 镜像源 ==="; \
         # 兼容两种 sources 格式（DEB822 格式和传统格式）
@@ -47,25 +47,17 @@ RUN set -eux; \
        curl \
        ca-certificates \
        gnupg; \
-    # 第三步：添加 NodeSource 软件源
-    echo "=== 配置 Node.js 20.x 软件源 ==="; \
-    if [ "$USE_CN_MIRROR" = "true" ]; then \
-        # 国内：使用清华镜像 + jsdelivr 获取 GPG 密钥
-        curl -fsSL https://cdn.jsdelivr.net/gh/nodesource/distributions@dev/keyrings/nodesource.gpg | gpg --dearmor -o /usr/share/keyrings/nodesource.gpg; \
-        echo "deb [signed-by=/usr/share/keyrings/nodesource.gpg] https://mirrors.tuna.tsinghua.edu.cn/nodesource/deb/node_20.x nodistro main" > /etc/apt/sources.list.d/nodesource.list; \
-    else \
-        # 海外：使用官方源
-        curl -fsSL https://deb.nodesource.com/setup_20.x | bash -; \
-    fi; \
-    # 第四步：安装 Node.js
-    apt-get update && apt-get install -y --no-install-recommends nodejs; \
+    # 第三步：直接用官方脚本安装 Node.js 20.x（通过代理加速，包体积小）
+    echo "=== 安装 Node.js 20.x ==="; \
+    curl -fsSL https://deb.nodesource.com/setup_20.x | bash -; \
+    apt-get install -y --no-install-recommends nodejs; \
     # 清理缓存减小镜像体积
     rm -rf /var/lib/apt/lists/*; \
-    # 第五步：Node.js 安装完成后再配置 pip 国内源
+    # 第四步：配置 pip 国内源
     if [ "$USE_CN_MIRROR" = "true" ]; then \
         echo "=== 配置 pip 清华源 ==="; \
-        pip config set global.index-url https://pypi.tuna.tsinghua.edu.cn/simple; \
-        pip config set global.trusted-host pypi.tuna.tsinghua.edu.cn; \
+        pip config set global.index-url https://pypi.tuna.tsinghua.edu.cn/simple || true; \
+        pip config set global.trusted-host pypi.tuna.tsinghua.edu.cn || true; \
     fi; \
     # 验证 Node.js 和 npm 版本
     node -v && npm -v
