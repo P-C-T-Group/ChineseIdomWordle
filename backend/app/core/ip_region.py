@@ -138,8 +138,9 @@ def _get_searcher() -> Optional[_IpSearcher]:
     with _searcher_lock:
         if _searcher is not None:
             return _searcher
-        # 默认 xdb 路径：backend/data/ip2region.xdb
-        db_path = Path(__file__).resolve().parent.parent.parent / "data" / "ip2region.xdb"
+        # 默认 xdb 路径：项目根目录 data/ip2region.xdb
+        db_path = Path(__file__).resolve(
+        ).parent.parent.parent.parent / "data" / "ip2region.xdb"
         if not db_path.is_file():
             return None
         try:

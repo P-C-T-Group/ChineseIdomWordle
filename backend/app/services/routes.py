@@ -12,6 +12,9 @@ from app.schemas.game import (
     ErrorResponse,
 )
 from app.schemas.config import CleanupMode
+from app.schemas.leaderboard import (
+    UploadRecordRequest,
+)
 from app.services.game_service import (
     create_game,
     submit_guess,
@@ -22,6 +25,7 @@ from app.services.game_service import (
     ensure_game,
     reveal_game
 )
+from app.services import leaderboard_service
 from app.database import db_manager
 from app.core.security import get_client_ip, is_admin_allowed
 from app.core.config import get_settings, reload_settings
@@ -422,4 +426,341 @@ async def admin_clean_games(req: AdminCleanRequest, request: Request):
         'retention_days': retention_days,
         'mode': mode.value,
         'deleted': deleted,
+    }
+
+
+# ----------------- 排行榜相关接口 -----------------
+
+def _get_lb_cookie(request: Request) -> Optional[str]:
+    """从请求中获取排行榜cookie token"""
+    cookie_name = get_settings().leaderboard.cookie_name
+    return request.cookies.get(cookie_name)
+
+
+def _set_lb_cookie(response: JSONResponse, cookie_token: str, request: Request) -> None:
+    """设置排行榜cookie"""
+    cookie_name, max_age_days = leaderboard_service._get_cookie_settings()
+    max_age = max_age_days * 24 * 3600
+    is_secure = request.url.scheme == 'https' if hasattr(
+        request, 'url') else False
+    response.set_cookie(
+        key=cookie_name,
+        value=cookie_token,
+        max_age=max_age,
+        httponly=True,
+        samesite='lax',
+        secure=is_secure
+    )
+
+
+@router.post("/leaderboard/upload")
+async def api_upload_leaderboard(req: UploadRecordRequest, request: Request):
+    """首次上传战绩到排行榜"""
+    client_ip = get_client_ip(request)
+    cookie_token = _get_lb_cookie(request)
+
+    try:
+        user, new_cookie, is_new = leaderboard_service.upload_records(
+            cookie_token, req.username, req.records, client_ip
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+    # 构建统计概览
+    stats = {}
+    for diff in ['easy', 'medium', 'hard']:
+        total = user.get(f'{diff}_total', 0)
+        won = user.get(f'{diff}_won', 0)
+        rounds = user.get(f'{diff}_win_rounds', 0)
+        stats[diff] = {
+            'total': total,
+            'won': won,
+            'win_rate': won / total if total > 0 else 0,
+            'avg_rounds': rounds / won if won > 0 else 0
+        }
+
+    resp = JSONResponse(content={
+        'code': 200,
+        'status': 'success',
+        'user_id': user['user_id'],
+        'username': user['username'],
+        'ip_location': user['ip_location'],
+        'message': "存档创建成功！" if is_new else "战绩上传成功！",
+        'stats': stats
+    })
+    _set_lb_cookie(resp, new_cookie, request)
+    return resp
+
+
+@router.post("/leaderboard/append")
+async def api_append_leaderboard(req: UploadRecordRequest, request: Request):
+    """追加新战绩到已有存档"""
+    cookie_token = _get_lb_cookie(request)
+    if not cookie_token:
+        raise HTTPException(status_code=400, detail="未找到存档，请先创建存档")
+
+    try:
+        user = leaderboard_service.append_records(cookie_token, req.records)
+        if req.username and req.username.strip():
+            db_manager.update_username(user['user_id'], req.username.strip())
+            updated_user = db_manager.get_user_by_id(user['user_id'])
+            if updated_user:
+                user = updated_user
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+    stats = {}
+    for diff in ['easy', 'medium', 'hard']:
+        total = user.get(f'{diff}_total', 0)
+        won = user.get(f'{diff}_won', 0)
+        rounds = user.get(f'{diff}_win_rounds', 0)
+        stats[diff] = {
+            'total': total,
+            'won': won,
+            'win_rate': won / total if total > 0 else 0,
+            'avg_rounds': rounds / won if won > 0 else 0
+        }
+
+    return {
+        'code': 200,
+        'status': 'success',
+        'user_id': user['user_id'],
+        'username': user['username'],
+        'ip_location': user['ip_location'],
+        'message': "战绩追加成功！",
+        'stats': stats
+    }
+
+
+class SubmitDailyRequest(BaseModel):
+    """提交日榜成绩请求"""
+    game_id: str
+    difficulty: str
+    won: bool
+    rounds: int
+
+
+@router.post("/leaderboard/daily/submit")
+async def api_submit_daily(req: SubmitDailyRequest, request: Request):
+    """提交每日挑战成绩到日榜"""
+    cookie_token = _get_lb_cookie(request)
+    if not cookie_token:
+        raise HTTPException(status_code=400, detail="未找到存档，无法提交日榜成绩")
+
+    try:
+        success = leaderboard_service.submit_daily_score(
+            cookie_token, req.game_id, req.difficulty, req.won, req.rounds
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+    return {
+        'code': 200,
+        'status': 'success',
+        'message': "今日成绩已提交" if success else "今日成绩已提交过",
+        'duplicate': not success
+    }
+
+
+@router.get("/leaderboard/{difficulty}")
+async def api_get_leaderboard(difficulty: str, request: Request):
+    """获取用户排行榜（三种榜单）"""
+    if difficulty not in ['easy', 'medium', 'hard']:
+        raise HTTPException(status_code=400, detail="无效的难度")
+
+    cookie_token = _get_lb_cookie(request)
+    profile = leaderboard_service.get_user_profile(cookie_token)
+    user_id = profile['user_id'] if profile else None
+
+    lb_data = leaderboard_service.get_leaderboard_data(difficulty, user_id)
+
+    def format_entry(entry, board_type):
+        value = entry['value']
+        if board_type == 'win_rate':
+            value = round(value * 100, 1)
+        elif board_type == 'avg_rounds':
+            value = round(value, 2)
+        return {
+            'rank': entry['rank'],
+            'user_id': entry['user_id'],
+            'username': entry['username'],
+            'ip_location': entry['ip_location'],
+            'value': value,
+            'total_games': entry['total'],
+            'won_games': entry['won'],
+            'win_rate': round(entry['win_rate'] * 100, 1),
+            'avg_rounds': round(entry['avg_rounds'], 2)
+        }
+
+    wins = [format_entry(e, 'wins') for e in lb_data['wins']]
+    win_rate = [format_entry(e, 'win_rate') for e in lb_data['win_rate']]
+    avg_rounds = [format_entry(e, 'avg_rounds') for e in lb_data['avg_rounds']]
+
+    return {
+        'code': 200,
+        'status': 'success',
+        'difficulty': difficulty,
+        'wins': wins,
+        'win_rate': win_rate,
+        'avg_rounds': avg_rounds,
+        'my_rank': lb_data['my_rank'],
+        'my_profile': profile
+    }
+
+
+@router.get("/leaderboard/{difficulty}/daily")
+async def api_get_daily_leaderboard(difficulty: str, request: Request):
+    """获取每日挑战排行榜"""
+    if difficulty not in ['easy', 'medium', 'hard']:
+        raise HTTPException(status_code=400, detail="无效的难度")
+
+    cookie_token = _get_lb_cookie(request)
+    profile = leaderboard_service.get_user_profile(cookie_token)
+    user_id = profile['user_id'] if profile else None
+
+    daily_data = leaderboard_service.get_daily_leaderboard_data(
+        difficulty, user_id)
+
+    daily_list = []
+    for entry in daily_data['daily']:
+        daily_list.append({
+            'rank': entry['rank'],
+            'user_id': entry['user_id'],
+            'username': entry['username'],
+            'ip_location': entry['ip_location'],
+            'rounds': entry['rounds']
+        })
+
+    from datetime import date
+    return {
+        'code': 200,
+        'status': 'success',
+        'difficulty': difficulty,
+        'date': date.today().isoformat(),
+        'daily': daily_list,
+        'my_rank': daily_data['my_rank'],
+        'my_profile': profile
+    }
+
+
+@router.get("/leaderboard/profile/me")
+async def api_get_my_profile(request: Request):
+    """获取当前用户存档信息"""
+    cookie_token = _get_lb_cookie(request)
+    profile = leaderboard_service.get_user_profile(cookie_token)
+    return {
+        'code': 200,
+        'status': 'success',
+        'profile': profile
+    }
+
+
+@router.delete("/leaderboard/profile/me")
+async def api_delete_my_profile(request: Request):
+    """用户删除自己的存档"""
+    cookie_token = _get_lb_cookie(request)
+    if not cookie_token:
+        raise HTTPException(status_code=400, detail="未找到存档")
+    success = leaderboard_service.delete_user_archive(cookie_token)
+
+    resp = JSONResponse(content={
+        'code': 200 if success else 400,
+        'status': 'success' if success else 'fail',
+        'message': '存档已删除' if success else '删除失败'
+    })
+
+    if success:
+        cookie_name = get_settings().leaderboard.cookie_name
+        resp.delete_cookie(key=cookie_name)
+
+    return resp
+
+
+# ----------------- 管理员排行榜管理接口 -----------------
+
+@router.get('/admin/leaderboard/users')
+async def admin_list_lb_users(request: Request):
+    """管理员：列出排行榜用户"""
+    _, auth_err = _verify_admin(request)
+    if auth_err is not None:
+        return auth_err
+
+    cfg = get_settings().database
+    users = []
+    if cfg.type.value == 'sqlite':
+        import sqlite3
+        conn = sqlite3.connect(str(cfg.sqlite_path_resolved))
+        conn.row_factory = sqlite3.Row
+        try:
+            cursor = conn.execute(
+                "SELECT user_id, username, ip_location, create_time, update_time, easy_total, medium_total, hard_total FROM top_user ORDER BY update_time DESC LIMIT 500")
+            users = [dict(row) for row in cursor.fetchall()]
+        finally:
+            conn.close()
+    else:
+        import pymysql
+        conn = pymysql.connect(
+            host=cfg.host, port=cfg.port, user=cfg.user,
+            password=cfg.password, database=cfg.db, charset=cfg.charset,
+            cursorclass=pymysql.cursors.DictCursor
+        )
+        try:
+            with conn.cursor() as cursor:
+                cursor.execute(
+                    "SELECT user_id, username, ip_location, create_time, update_time, easy_total, medium_total, hard_total FROM top_user ORDER BY update_time DESC LIMIT 500")
+                users = cursor.fetchall()
+        finally:
+            conn.close()
+
+    return {'code': 200, 'status': 'success', 'total': len(users), 'users': users}
+
+
+class AdminDeleteUserRequest(BaseModel):
+    """管理员删除用户请求"""
+    user_id: str
+
+
+@router.post('/admin/leaderboard/delete')
+async def admin_delete_lb_user(req: AdminDeleteUserRequest, request: Request):
+    """管理员：删除指定用户ID的存档并吊销其cookie"""
+    _, auth_err = _verify_admin(request)
+    if auth_err is not None:
+        return auth_err
+
+    success = leaderboard_service.admin_delete_user(req.user_id)
+    return {
+        'code': 200 if success else 404,
+        'status': 'success' if success else 'fail',
+        'message': f'用户 {req.user_id} 已删除' if success else '用户不存在'
+    }
+
+
+@router.post('/admin/leaderboard/clean-daily')
+async def admin_clean_daily(request: Request):
+    """管理员：手动清空日榜"""
+    _, auth_err = _verify_admin(request)
+    if auth_err is not None:
+        return auth_err
+
+    deleted = db_manager.clean_daily_board()
+    return {
+        'code': 200,
+        'status': 'success',
+        'message': f'日榜已清空，删除{deleted}条记录'
+    }
+
+
+@router.post('/admin/leaderboard/clean-inactive')
+async def admin_clean_inactive(request: Request):
+    """管理员：手动清理不活跃用户"""
+    _, auth_err = _verify_admin(request)
+    if auth_err is not None:
+        return auth_err
+
+    inactive_days = get_settings().leaderboard.inactive_days
+    deleted = db_manager.clean_inactive_users(inactive_days)
+    return {
+        'code': 200,
+        'status': 'success',
+        'message': f'已清理{inactive_days}天不活跃用户，删除{deleted}条记录'
     }

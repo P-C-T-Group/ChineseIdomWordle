@@ -1,137 +1,483 @@
-/* ===== 排行榜装修中页面样式 ===== */
-.constructionContainer {
-    width: 90%;
-    max-width: 600px;
-    margin: 3rem auto;
-    padding: 3rem 2rem;
-    text-align: center;
-    background-color: var(--card-bg);
-    border-radius: var(--radius-md);
-    box-shadow: var(--shadow-md);
+/* ===== 排行榜页面样式 ===== */
+.leaderboardContainer {
+    width: 95%;
+    max-width: 800px;
+    margin: 1.5rem auto;
     flex: 1;
+}
+
+/* 页头标签 */
+.lbHeader {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1rem;
+    flex-wrap: wrap;
+    gap: 0.8rem;
+}
+
+.lbTabs, .lbDifficulty {
+    display: flex;
+    gap: 0.5rem;
+    background: var(--bg-secondary);
+    padding: 0.3rem;
+    border-radius: var(--radius-sm);
+}
+
+.lbTab, .lbDiffBtn, .boardTypeBtn {
+    padding: 0.5rem 1rem;
+    border: none;
+    background: transparent;
+    color: var(--text-secondary);
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    font-size: 0.95em;
+    font-weight: 500;
+    transition: all 0.2s ease;
+}
+
+.lbTab.active, .lbDiffBtn.active, .boardTypeBtn.active {
+    background: var(--primary);
+    color: white;
+}
+
+.lbTab:hover, .lbDiffBtn:hover, .boardTypeBtn:hover {
+    background: var(--bg-hover);
+    color: var(--text-primary);
+}
+
+.lbTab.active:hover, .lbDiffBtn.active:hover, .boardTypeBtn.active:hover {
+    background: var(--primary-dark, var(--primary));
+    color: white;
+}
+
+/* 榜单类型切换（总榜三种子榜） */
+.boardTypeTabs {
+    display: flex;
+    gap: 0.5rem;
+    margin-bottom: 1rem;
+    justify-content: center;
+}
+
+.boardTypeBtn {
+    padding: 0.4rem 0.9rem;
+    font-size: 0.9em;
+}
+
+/* 日榜日期 */
+.dailyDate {
+    text-align: center;
+    padding: 0.6rem;
+    background: var(--bg-secondary);
+    border-radius: var(--radius-sm);
+    margin-bottom: 1rem;
+    color: var(--text-secondary);
+    font-size: 0.95em;
+}
+
+/* 用户存档卡片 */
+.profileCard, .noProfileCard {
+    background: var(--card-bg);
+    border-radius: var(--radius-md);
+    padding: 1.2rem;
+    margin-bottom: 1rem;
+    box-shadow: var(--shadow-sm);
+}
+
+.noProfileCard {
+    text-align: center;
+}
+
+.noProfileCard p {
+    margin: 0.3rem 0;
+    color: var(--text-primary);
+}
+
+.noProfileCard .hint {
+    font-size: 0.9em;
+    color: var(--text-secondary);
+    margin-bottom: 1rem;
+}
+
+.profileHeader {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    flex-wrap: wrap;
+    gap: 0.8rem;
+    margin-bottom: 1rem;
+}
+
+.profileInfo {
     display: flex;
     flex-direction: column;
-    align-items: center;
-    justify-content: center;
+    gap: 0.2rem;
 }
 
-.constructionIcon {
-    width: 5em;
-    height: 5em;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    background-color: var(--bg-secondary);
-    border-radius: 50%;
-    margin-bottom: 1.5rem;
-    animation: rotate 8s linear infinite;
-}
-
-.constructionIcon svg {
-    width: 3em;
-    height: 3em;
-    stroke: var(--primary);
-}
-
-@keyframes rotate {
-    from {
-        transform: rotate(0deg);
-    }
-
-    to {
-        transform: rotate(360deg);
-    }
-}
-
-.constructionTitle {
-    font-size: 2em;
-    font-family: "85W", sans-serif;
-    color: var(--primary);
-    margin-bottom: 1rem;
-    letter-spacing: 0.1em;
-}
-
-.constructionText {
+.profileName {
     font-size: 1.2em;
+    font-weight: bold;
+    color: var(--primary);
+}
+
+.profileId {
+    font-size: 0.85em;
     color: var(--text-secondary);
-    line-height: 1.8;
+    font-family: monospace;
 }
 
-/* ===== 响应式适配 ===== */
-/* 平板端 */
-@media (max-width: 1024px) {
-    .constructionTitle {
-        font-size: 1.8em;
-    }
-
-    .constructionIcon {
-        width: 4.5em;
-        height: 4.5em;
-    }
-
-    .constructionIcon svg {
-        width: 2.7em;
-        height: 2.7em;
-    }
+.profileLocation {
+    font-size: 0.85em;
+    color: var(--text-secondary);
 }
 
-/* 移动端 */
+.profileActions {
+    display: flex;
+    gap: 0.5rem;
+}
+
+.btnSmall, .btnPrimary {
+    padding: 0.4rem 0.8rem;
+    border: none;
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    font-size: 0.85em;
+    transition: all 0.2s ease;
+}
+
+.btnSmall.primary, .btnPrimary {
+    background: var(--primary);
+    color: white;
+}
+
+.btnSmall.primary:hover, .btnPrimary:hover {
+    background: var(--primary-dark, var(--primary));
+}
+
+.btnSmall.danger {
+    background: var(--absent);
+    color: white;
+}
+
+.btnSmall.danger:hover {
+    background: #c0392b;
+}
+
+.btnPrimary {
+    padding: 0.6rem 1.5rem;
+    font-size: 1em;
+}
+
+/* 存档统计 */
+.profileStats {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 0.8rem;
+}
+
+.statBlock {
+    background: var(--bg-secondary);
+    padding: 0.8rem;
+    border-radius: var(--radius-sm);
+    text-align: center;
+}
+
+.statBlock .diffLabel {
+    font-size: 0.85em;
+    color: var(--text-secondary);
+    margin-bottom: 0.3rem;
+}
+
+.statBlock .statNumbers {
+    display: flex;
+    justify-content: center;
+    gap: 0.8rem;
+    font-size: 0.8em;
+    flex-wrap: wrap;
+}
+
+.statBlock .statItem {
+    text-align: center;
+}
+
+.statBlock .statValue {
+    font-weight: bold;
+    color: var(--text-primary);
+}
+
+.statBlock .statLabel {
+    color: var(--text-secondary);
+}
+
+/* 排行榜列表 */
+.lbListContainer {
+    background: var(--card-bg);
+    border-radius: var(--radius-md);
+    overflow: hidden;
+    box-shadow: var(--shadow-sm);
+}
+
+.lbList {
+    max-height: 60vh;
+    overflow-y: auto;
+}
+
+.lbItem {
+    display: grid;
+    grid-template-columns: 50px 1fr auto;
+    gap: 0.8rem;
+    padding: 0.8rem 1rem;
+    align-items: center;
+    border-bottom: 1px solid var(--border-color);
+    transition: background 0.15s ease;
+}
+
+.lbItem:last-child {
+    border-bottom: none;
+}
+
+.lbItem:hover {
+    background: var(--bg-secondary);
+}
+
+.lbItem.me {
+    background: rgba(255, 193, 7, 0.1);
+    border-left: 3px solid #ffc107;
+}
+
+.lbRank {
+    font-weight: bold;
+    font-size: 1.1em;
+    text-align: center;
+}
+
+.rank-1 { color: #ffd700; }
+.rank-2 { color: #c0c0c0; }
+.rank-3 { color: #cd7f32; }
+
+.lbUserInfo {
+    display: flex;
+    flex-direction: column;
+    gap: 0.15rem;
+    min-width: 0;
+}
+
+.lbUsername {
+    font-weight: 500;
+    color: var(--text-primary);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.lbMeta {
+    font-size: 0.8em;
+    color: var(--text-secondary);
+    display: flex;
+    gap: 0.6rem;
+}
+
+.lbUserId {
+    font-family: monospace;
+}
+
+.lbValue {
+    font-weight: bold;
+    font-size: 1.1em;
+    color: var(--primary);
+    text-align: right;
+    min-width: 60px;
+}
+
+.lbValue .unit {
+    font-size: 0.7em;
+    color: var(--text-secondary);
+    font-weight: normal;
+}
+
+/* 我的名次 */
+.myRank {
+    padding: 0.8rem 1rem;
+    background: rgba(255, 193, 7, 0.15);
+    border-top: 2px solid #ffc107;
+}
+
+.myRank .lbItem {
+    background: transparent;
+    border-bottom: none;
+    padding: 0;
+}
+
+.loading, .empty {
+    text-align: center;
+    padding: 3rem 1rem;
+    color: var(--text-secondary);
+}
+
+/* 上传弹窗 */
+.uploadModalContent {
+    max-width: 500px;
+}
+
+.uploadForm {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.formGroup {
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+}
+
+.formGroup label {
+    font-weight: 500;
+    color: var(--text-primary);
+}
+
+.formGroup input {
+    padding: 0.6rem 0.8rem;
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-sm);
+    background: var(--bg-primary);
+    color: var(--text-primary);
+    font-size: 1em;
+}
+
+.formGroup input:focus {
+    outline: none;
+    border-color: var(--primary);
+}
+
+.uploadStats {
+    background: var(--bg-secondary);
+    padding: 0.8rem;
+    border-radius: var(--radius-sm);
+}
+
+.uploadTips {
+    font-size: 0.85em;
+    color: var(--text-secondary);
+    background: var(--bg-secondary);
+    padding: 0.8rem;
+    border-radius: var(--radius-sm);
+}
+
+.uploadTips p {
+    margin: 0 0 0.3rem 0;
+}
+
+.uploadTips ul {
+    margin: 0;
+    padding-left: 1.2rem;
+}
+
+.uploadTips li {
+    margin: 0.2rem 0;
+}
+
+/* 历史记录样式 */
+.history-empty {
+    text-align: center;
+    padding: 2rem;
+    color: var(--text-secondary);
+}
+
+.history-item {
+    padding: 0.8rem 0;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.history-item:last-child {
+    border-bottom: none;
+}
+
+.history-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0.3rem;
+}
+
+.history-answer {
+    font-weight: bold;
+    color: var(--text-primary);
+}
+
+.history-result {
+    font-size: 0.8em;
+    padding: 0.2rem 0.5rem;
+    border-radius: var(--radius-sm);
+}
+
+.history-result.won {
+    background: rgba(39, 174, 96, 0.2);
+    color: #27ae60;
+}
+
+.history-result.lost {
+    background: rgba(231, 76, 60, 0.2);
+    color: #e74c3c;
+}
+
+.history-pinyin {
+    font-size: 0.9em;
+    color: var(--text-secondary);
+}
+
+.history-explanation {
+    font-size: 0.85em;
+    color: var(--text-secondary);
+    margin-top: 0.2rem;
+}
+
+.history-rounds {
+    font-size: 0.8em;
+    color: var(--text-secondary);
+    margin-top: 0.3rem;
+}
+
+/* 响应式 */
 @media (max-width: 768px) {
-    .constructionContainer {
-        width: 95%;
-        margin: 2rem auto;
-        padding: 2.5rem 1.5rem;
+    .leaderboardContainer {
+        width: 98%;
+        margin: 1rem auto;
     }
-
-    .constructionTitle {
-        font-size: 1.6em;
+    
+    .lbHeader {
+        flex-direction: column;
+        align-items: stretch;
     }
-
-    .constructionText {
-        font-size: 1.1em;
+    
+    .lbTabs, .lbDifficulty {
+        justify-content: center;
     }
-
-    .constructionIcon {
-        width: 4em;
-        height: 4em;
-        margin-bottom: 1.2rem;
+    
+    .lbItem {
+        grid-template-columns: 40px 1fr auto;
+        padding: 0.7rem 0.8rem;
+        gap: 0.5rem;
     }
-
-    .constructionIcon svg {
-        width: 2.4em;
-        height: 2.4em;
+    
+    .lbMeta {
+        font-size: 0.75em;
+        gap: 0.4rem;
     }
-}
-
-/* 小屏手机 */
-@media (max-width: 480px) {
-    .constructionContainer {
-        padding: 2rem 1.2rem;
-        margin: 1.5rem auto;
+    
+    .profileStats {
+        grid-template-columns: 1fr;
     }
-
-    .constructionTitle {
-        font-size: 1.4em;
+    
+    .profileHeader {
+        flex-direction: column;
     }
-
-    .constructionText {
-        font-size: 1em;
+    
+    .profileActions {
+        width: 100%;
     }
-
-    .constructionIcon {
-        width: 3.5em;
-        height: 3.5em;
-    }
-
-    .constructionIcon svg {
-        width: 2em;
-        height: 2em;
-    }
-}
-
-/* 减少动画偏好设置 */
-@media (prefers-reduced-motion: reduce) {
-    .constructionIcon {
-        animation: none;
+    
+    .btnSmall {
+        flex: 1;
     }
 }

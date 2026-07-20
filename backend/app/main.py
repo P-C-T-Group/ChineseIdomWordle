@@ -22,7 +22,7 @@ from app.database import db_manager
 # 统一配置
 from app.core.config import get_settings
 from app.core.logging_setup import setup_logging
-from app.core.security import is_admin_allowed, get_client_ip, _ip_in_list
+from app.core.security import get_client_ip, _ip_in_list
 # 日志
 import logging
 
@@ -113,16 +113,34 @@ _cleanup_task = None
 
 async def _periodic_clean_loop():
     """后台循环：定时清理过期 token，并按配置清理过期对局。"""
+    from datetime import date, datetime
+    _last_daily_clean_date = None
     try:
         while True:
             try:
-                # 1) 过期 token 清理
+                today = date.today()
+                # 1) 每日0点清空日榜（跨天时执行）
+                if _last_daily_clean_date != today:
+                    yesterday = today.isoformat()
+                    # 清理昨天的日榜（保留今天的）
+                    db_manager.clean_daily_board(yesterday)
+                    _last_daily_clean_date = today
+                    log.info(f"[Cleanup] 已清空日榜（{yesterday}）")
+
+                # 2) 过期 token 清理
                 db_manager.clean_expired_tokens()
-                # 2) 过期对局清理（受配置开关控制）
+
+                # 3) 过期对局清理（受配置开关控制）
                 cleanup_cfg = get_settings().cleanup
                 if cleanup_cfg.enabled:
                     db_manager.clean_old_games(
                         cleanup_cfg.retention_days, cleanup_cfg.mode)
+
+                # 4) 清理不活跃用户（每6小时检查一次）
+                if datetime.now().hour % 6 == 0:
+                    lb_cfg = get_settings().leaderboard
+                    if lb_cfg.inactive_days > 0:
+                        db_manager.clean_inactive_users(lb_cfg.inactive_days)
             except Exception:
                 # 忽略清理错误，避免任务退出
                 pass

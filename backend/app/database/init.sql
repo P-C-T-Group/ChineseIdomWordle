@@ -53,7 +53,7 @@ CREATE TABLE IF NOT EXISTS top_daily (
     rounds INTEGER NOT NULL DEFAULT 0,
     play_date TEXT NOT NULL DEFAULT '',
     create_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    UNIQUE(user_id, game_id)
+    UNIQUE(user_id, difficulty, play_date)
 );
 CREATE INDEX IF NOT EXISTS idx_top_daily_user ON top_daily(user_id);
 CREATE INDEX IF NOT EXISTS idx_top_daily_diff ON top_daily(difficulty);

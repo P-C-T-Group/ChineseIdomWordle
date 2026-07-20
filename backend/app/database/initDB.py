@@ -72,7 +72,7 @@ def _init_sqlite():
             CREATE INDEX IF NOT EXISTS idx_top_user_cookie ON top_user(cookie_token);
 
             -- 排行榜：每日挑战对局明细表
-            -- 记录已上传的每局对局，用于追加合并与去重
+            -- 每个用户每天每个难度只能提交一次成绩
             CREATE TABLE IF NOT EXISTS top_daily (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 user_id TEXT NOT NULL,
@@ -83,7 +83,7 @@ def _init_sqlite():
                 rounds INTEGER NOT NULL DEFAULT 0,
                 play_date TEXT NOT NULL DEFAULT '',
                 create_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                UNIQUE(user_id, game_id)
+                UNIQUE(user_id, difficulty, play_date)
             );
             CREATE INDEX IF NOT EXISTS idx_top_daily_user ON top_daily(user_id);
             CREATE INDEX IF NOT EXISTS idx_top_daily_diff ON top_daily(difficulty);
@@ -151,8 +151,10 @@ def _init_mysql():
 
             # 索引列表
             index_sqls = [
-                ("GAME_CREATE_IP",  "CREATE INDEX `GAME_CREATE_IP` ON `games` (`create_ip`)"),
-                ("GAME_DIFFICULTY", "CREATE INDEX `GAME_DIFFICULTY` ON `games` (`difficulty`)"),
+                ("GAME_CREATE_IP",
+                 "CREATE INDEX `GAME_CREATE_IP` ON `games` (`create_ip`)"),
+                ("GAME_DIFFICULTY",
+                 "CREATE INDEX `GAME_DIFFICULTY` ON `games` (`difficulty`)"),
                 ("GAME_STATUS",     "CREATE INDEX `GAME_STATUS` ON `games` (`game_status`)"),
             ]
             for idx_name, sql in index_sqls:
@@ -181,7 +183,8 @@ def _init_mysql():
                 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
             """)
             try:
-                cursor.execute("CREATE INDEX `TOKENS_SHA` ON `tokens` (`sha256hash`)")
+                cursor.execute(
+                    "CREATE INDEX `TOKENS_SHA` ON `tokens` (`sha256hash`)")
             except (ProgrammingError, OperationalError) as e:
                 # 1061 Duplicate key name
                 if getattr(e, 'args', None) and e.args[0] == 1061:
@@ -211,7 +214,8 @@ def _init_mysql():
                 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
             """)
             try:
-                cursor.execute("CREATE INDEX `TOP_USER_COOKIE` ON `top_user` (`cookie_token`)")
+                cursor.execute(
+                    "CREATE INDEX `TOP_USER_COOKIE` ON `top_user` (`cookie_token`)")
             except (ProgrammingError, OperationalError) as e:
                 if getattr(e, 'args', None) and e.args[0] == 1061:
                     pass
@@ -230,12 +234,14 @@ def _init_mysql():
                     `rounds` INT NOT NULL DEFAULT 0,
                     `play_date` varchar(10) NOT NULL DEFAULT '',
                     `create_time` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
-                    UNIQUE KEY `uniq_user_game` (`user_id`, `game_id`)
+                    UNIQUE KEY `uniq_user_date_diff` (`user_id`, `difficulty`, `play_date`)
                 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
             """)
             for idx_name, sql in [
-                ("TOP_DAILY_USER", "CREATE INDEX `TOP_DAILY_USER` ON `top_daily` (`user_id`)"),
-                ("TOP_DAILY_DIFF", "CREATE INDEX `TOP_DAILY_DIFF` ON `top_daily` (`difficulty`)"),
+                ("TOP_DAILY_USER",
+                 "CREATE INDEX `TOP_DAILY_USER` ON `top_daily` (`user_id`)"),
+                ("TOP_DAILY_DIFF",
+                 "CREATE INDEX `TOP_DAILY_DIFF` ON `top_daily` (`difficulty`)"),
             ]:
                 if idx_name in existing_indexes:
                     continue
