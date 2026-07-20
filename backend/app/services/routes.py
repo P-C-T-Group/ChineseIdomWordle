@@ -252,7 +252,7 @@ async def admin_list_tokens(request: Request):
     return {'code': 200, 'status': 'success', 'total': len(rows), 'tokens': rows}
 
 
-@router.get('/admin/tokens/delete')
+@router.post('/admin/tokens/delete')
 async def admin_delete_tokens(request: Request):
     """删除接口：批量删除 token。
 
@@ -660,7 +660,7 @@ async def api_get_my_profile(request: Request):
     }
 
 
-@router.post("/leaderboard/profile/delete")
+@router.get("/leaderboard/profile/delete")
 async def api_delete_my_profile(request: Request):
     """用户删除自己的存档"""
     cookie_token = _get_lb_cookie(request)
