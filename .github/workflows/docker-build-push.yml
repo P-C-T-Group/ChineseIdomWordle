@@ -129,18 +129,21 @@ jobs:
             org.opencontainers.image.vendor=P-C-T-Group
             org.opencontainers.image.licenses=MIT
           annotations: |
-            org.opencontainers.image.title=ChineseIdomWordle
-            org.opencontainers.image.description=镜像由 GitHub Actions 于 ${{ steps.meta.outputs.build_time }} 自动构建 | 构建来源提交: ${{ steps.meta.outputs.short_sha }} | 当前稳定版: ${{ steps.meta.outputs.stable_version }}
-            org.opencontainers.image.version=${{ steps.meta.outputs.full_version }}
-            org.opencontainers.image.revision=${{ github.sha }}
-            org.opencontainers.image.created=${{ steps.meta.outputs.build_time_iso }}
-            org.opencontainers.image.source=https://github.com/${{ github.repository }}
-            org.opencontainers.image.vendor=P-C-T-Group
-            org.opencontainers.image.licenses=MIT
+            # 同时写入顶层 index（GHCR 页面读取）和每个架构的 manifest
+            index,manifest:org.opencontainers.image.title=ChineseIdomWordle
+            index,manifest:org.opencontainers.image.description=镜像由 GitHub Actions 于 ${{ steps.meta.outputs.build_time }} 自动构建 | 构建来源提交: ${{ steps.meta.outputs.short_sha }} | 当前稳定版: ${{ steps.meta.outputs.stable_version }}
+            index,manifest:org.opencontainers.image.version=${{ steps.meta.outputs.full_version }}
+            index,manifest:org.opencontainers.image.revision=${{ github.sha }}
+            index,manifest:org.opencontainers.image.created=${{ steps.meta.outputs.build_time_iso }}
+            index,manifest:org.opencontainers.image.source=https://github.com/${{ github.repository }}
+            index,manifest:org.opencontainers.image.vendor=P-C-T-Group
+            index,manifest:org.opencontainers.image.licenses=MIT
           build-args: |
             USE_CN_MIRROR=False
           cache-from: type=gha
           cache-to: type=gha,mode=max
+          # 关闭 provenance 避免干扰顶层 annotation
+          provenance: false
 
       # 输出结果
       - name: Image pushed
