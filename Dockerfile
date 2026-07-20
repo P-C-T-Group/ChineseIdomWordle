@@ -69,9 +69,6 @@ COPY backend/requirements.txt /app/backend/requirements.txt
 RUN echo "=== 安装 Python 依赖 ===" \
     && pip install --no-cache-dir -r /app/backend/requirements.txt
 
-# 先复制配置处理脚本和依赖文件
-COPY setup_config.py /app/setup_config.py
-
 # 复制项目文件（先复制全部，后面 entrypoint 会处理挂载时的默认文件）
 COPY . /app/
 
