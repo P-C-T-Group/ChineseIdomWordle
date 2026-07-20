@@ -1323,8 +1323,13 @@ def record_uploaded_games(user_id: str, records: list[dict]) -> int:
                             "INSERT IGNORE INTO top_user_games (user_id, game_id, timestamp) VALUES (%s, %s, %s)",
                             (user_id, rec['game_id'], rec['timestamp']))
                         added += cursor.rowcount
-                    except Exception:
-                        pass
+                    except Exception as e:
+                        log.warning(
+                            "[DB] record_uploaded_games skipped one record for user_id=%s, game_id=%s, error=%s",
+                            user_id,
+                            rec.get('game_id'),
+                            e,
+                        )
             conn.commit()
         finally:
             conn.close()
