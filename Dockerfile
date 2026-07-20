@@ -102,11 +102,9 @@ RUN mkdir -p /app/defaults/config \
     # 保存默认 client 目录内容
     && cp -r /app/client/* /app/defaults/client/ \
     # 创建必要的目录
-    && mkdir -p /app/logs
-
-# 赋予 entrypoint 执行权限
-COPY docker-entrypoint.sh /app/docker-entrypoint.sh
-RUN chmod +x /app/docker-entrypoint.sh
+    && mkdir -p /app/logs \
+    # 赋予 entrypoint 执行权限（文件已由 COPY . /app/ 复制）
+    && chmod +x /app/docker-entrypoint.sh
 
 # 暴露服务端口（默认 8000）
 EXPOSE 8000
