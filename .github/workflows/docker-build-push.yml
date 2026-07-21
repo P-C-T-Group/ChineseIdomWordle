@@ -31,38 +31,60 @@ jobs:
       - name: Get version
         id: version
         run: |
-          # 尝试获取最新 release 版本
-          LATEST_RELEASE=$(curl -sL \
-            -H "Accept: application/vnd.github+json" \
-            -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
-            "${{ github.api_url }}/repos/${{ github.repository }}/releases/latest" | \
-            jq -r '.tag_name // empty' | sed 's/^v//')
-          
-          if [ -z "$LATEST_RELEASE" ]; then
-            # 没有 release，使用 0.0 作为基础
-            LATEST_RELEASE="0.0"
-          fi
-          
-          echo "Latest release version: $LATEST_RELEASE"
-          
-          # 检查这个主版本下已经有多少个镜像 tag
-          # 拉取现有镜像的标签列表，找到当前主版本最大的补丁号
-          EXISTS_TAGS=$(curl -sL \
-            -H "Accept: application/vnd.github+json" \
-            -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
-            "${{ github.api_url }}/packages/container/c-i-wordle/versions?per_page=100" | \
-            jq -r '.[].metadata.container.tags[] // empty' | grep "^${LATEST_RELEASE//./\\.}\\.[0-9]\+$" || true)
-          
-          if [ -z "$EXISTS_TAGS" ]; then
-            PATCH=1
+          # 判断触发方式
+          if [ "${{ github.event_name }}" = "release" ]; then
+            # Release 触发：从 release tag 提取主.次版本号，去掉 v 前缀和补丁号
+            RELEASE_TAG="${{ github.event.release.tag_name }}"
+            # 去掉 v 前缀，然后只取主版本和次版本
+            NEW_VERSION=$(echo "$RELEASE_TAG" | sed 's/^v//' | awk -F. '{print $1"."$2}')
+            echo "Release triggered, using version: $NEW_VERSION (from tag: $RELEASE_TAG)"
           else
-            # 提取补丁号并找最大值
-            MAX_PATCH=$(echo "$EXISTS_TAGS" | sed "s/${LATEST_RELEASE//./\\.}\\.//" | sort -n | tail -n1)
+            # 非 Release 触发：获取最新 release 版本，自动递增补丁号
+            LATEST_RELEASE=$(curl -sL \
+              -H "Accept: application/vnd.github+json" \
+              -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
+              "${{ github.api_url }}/repos/${{ github.repository }}/releases/latest" | \
+              jq -r '.tag_name // empty' | sed 's/^v//')
+            
+            if [ -z "$LATEST_RELEASE" ]; then
+              # 没有 release，使用 0.0 作为基础
+              LATEST_RELEASE="0.0"
+            fi
+            
+            echo "Latest release version: $LATEST_RELEASE"
+            
+            # 分页拉取所有镜像标签，实时计算当前主版本下最大的补丁号
+            PAGE=1
+            MAX_PATCH=0
+            while true; do
+              # 获取当前页的补丁号并更新最大值
+              PAGE_PATCHES=$(curl -sL \
+                -H "Accept: application/vnd.github+json" \
+                -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
+                "${{ github.api_url }}/packages/container/c-i-wordle/versions?per_page=100&page=$PAGE" | \
+                jq -r '.[].metadata.container.tags[] // empty' 2>/dev/null | grep "^${LATEST_RELEASE//./\\.}\\.[0-9]\+$" | sed "s/${LATEST_RELEASE//./\\.}\\.//" | sort -n | tail -n1 || echo 0)
+              
+              if [ "$PAGE_PATCHES" -gt "$MAX_PATCH" ]; then
+                MAX_PATCH=$PAGE_PATCHES
+              fi
+              
+              # 如果当前页没有匹配的标签，说明已经遍历完
+              if [ "$PAGE_PATCHES" -eq 0 ]; then
+                break
+              fi
+              
+              PAGE=$((PAGE + 1))
+              # 最多查 10 页，避免无限循环
+              if [ $PAGE -gt 10 ]; then
+                break
+              fi
+            done
+            
             PATCH=$((MAX_PATCH + 1))
+            
+            NEW_VERSION="${LATEST_RELEASE}.${PATCH}"
+            echo "Non-release triggered, new version: $NEW_VERSION"
           fi
-          
-          NEW_VERSION="${LATEST_RELEASE}.${PATCH}"
-          echo "New version: $NEW_VERSION"
           
           echo "version=$NEW_VERSION" >> $GITHUB_OUTPUT
 
