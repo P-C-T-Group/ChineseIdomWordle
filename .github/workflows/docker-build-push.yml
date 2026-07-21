@@ -40,20 +40,24 @@ jobs:
             echo "Release triggered, using version: $NEW_VERSION (from tag: $RELEASE_TAG)"
           else
             # 非 Release 触发：获取最新 release 版本，自动递增补丁号
-            LATEST_RELEASE=$(curl -sL \
+            LATEST_RELEASE_TAG=$(curl -sL \
               -H "Accept: application/vnd.github+json" \
               -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
               "${{ github.api_url }}/repos/${{ github.repository }}/releases/latest" | \
               jq -r '.tag_name // empty' | sed 's/^v//')
             
-            if [ -z "$LATEST_RELEASE" ]; then
+            if [ -z "$LATEST_RELEASE_TAG" ]; then
               # 没有 release，使用 0.0 作为基础
-              LATEST_RELEASE="0.0"
+              LATEST_MAJOR_MINOR="0.0"
+            else
+              # 从 release 版本号中提取主.次版本（去掉补丁号）
+              LATEST_MAJOR_MINOR=$(echo "$LATEST_RELEASE_TAG" | awk -F. '{print $1"."$2}')
             fi
             
-            echo "Latest release version: $LATEST_RELEASE"
+            echo "Latest release tag: $LATEST_RELEASE_TAG"
+            echo "Major.Minor version: $LATEST_MAJOR_MINOR"
             
-            # 分页拉取所有镜像标签，实时计算当前主版本下最大的补丁号
+            # 分页拉取所有镜像标签，实时计算当前主.次版本下最大的补丁号
             PAGE=1
             MAX_PATCH=0
             while true; do
@@ -62,7 +66,7 @@ jobs:
                 -H "Accept: application/vnd.github+json" \
                 -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
                 "${{ github.api_url }}/packages/container/c-i-wordle/versions?per_page=100&page=$PAGE" | \
-                jq -r '.[].metadata.container.tags[] // empty' 2>/dev/null | grep "^${LATEST_RELEASE//./\\.}\\.[0-9]\+$" | sed "s/${LATEST_RELEASE//./\\.}\\.//" | sort -n | tail -n1 || echo 0)
+                jq -r '.[].metadata.container.tags[] // empty' 2>/dev/null | grep "^${LATEST_MAJOR_MINOR//./\\.}\\.[0-9]\+$" | sed "s/${LATEST_MAJOR_MINOR//./\\.}\\.//" | sort -n | tail -n1 || echo 0)
               
               if [ "$PAGE_PATCHES" -gt "$MAX_PATCH" ]; then
                 MAX_PATCH=$PAGE_PATCHES
@@ -82,7 +86,7 @@ jobs:
             
             PATCH=$((MAX_PATCH + 1))
             
-            NEW_VERSION="${LATEST_RELEASE}.${PATCH}"
+            NEW_VERSION="${LATEST_MAJOR_MINOR}.${PATCH}"
             echo "Non-release triggered, new version: $NEW_VERSION"
           fi
           
