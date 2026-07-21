@@ -14,9 +14,8 @@
 services:
   wordle:
     # 镜像版本说明：
-    # `latest` 可获取由最新提交自动构建的夜间版本
-    # `2.1.1`  可获取目前的最新稳定版本，
-    # 每个大版本的第一个补丁版本为稳定版，如`2.1.1`、`2.2.1`等。
+    # `latest`、`a.b.commit_hash` 可获取由最新提交自动构建的夜间版本
+    # `a.b` 获取每个大版本的稳定版镜像，如`2.0`、`2.1`等。
     image: ghcr.io/p-c-t-group/c-i-wordle:latest
     container_name: CIwordle
     restart: unless-stopped
