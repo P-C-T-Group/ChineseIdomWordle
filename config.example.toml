@@ -4,6 +4,7 @@
 # 复制本文件为 config.toml 后按需修改。未列出的字段使用代码中的默认值。
 # 敏感项（如数据库密码、管理员 Token 摘要）也可通过环境变量覆盖，详见
 # app/core/config.py 的 _ENV_OVERRIDES。环境变量优先级高于本文件。
+# 如需通过 Docker 使用，请勿修改本文件中涉及相对路径的条目，除非你知道你在做什么。
 # ===========================================================================
 
 # ───────────────────────────── 数据库 ─────────────────────────────
@@ -11,10 +12,10 @@
 # 类型：sqlite（默认）或 mysql
 type = "sqlite"
 
-# SQLite 专用：数据库文件路径
+# SQLite：数据库文件路径
 sqlite_path = "data/wordle.db"
 
-# MySQL 专用（type = "mysql" 时生效）
+# MySQL：连接信息
 host = "127.0.0.1"
 port = 3306
 user = "root"
@@ -25,17 +26,19 @@ charset = "utf8mb4"
 
 # ─────────────────────────── 鉴权 / 管理员 ───────────────────────────
 [auth]
-# 是否开启全局 Token 鉴权；关闭后所有普通接口免 Token 访问
+# 是否开启全局 Token 鉴权
+# 关闭后所有普通接口免 Token 访问
 enabled = true
 
-# 管理员 Token 的 SHA-256 摘要（hex 小写），用于 /api/admin/* 接口
-# 生成方式：echo -n "你的管理员Token" | sha256sum
-# 留空则管理员接口不可用，此处示例为test-admin
+# 管理员 Token 的 SHA-256 摘要（hex 小写）
+# 用于 /api/admin/* 接口，留空则关闭所有管理员接口
+# 可通过 echo -n "你的管理员Token" | sha256sum 获取
+# 此处示例值对应的明文为：test-admin
 admin_token_hash = "db09d473d4b6461b91bfa47e4fed3ef55e0234df4132ca7a827b0a69e8927cac"
 
 
 # ─────────────────────────── 游戏设置 ───────────────────────────
-# 三档难度参数：最大轮数、候选字数量、最大提示次数（提示次数 ≤ 5）
+# 三档难度参数：最大回合数、每局候选字数量、最大提示次数（提示次数必须 ≤ 5）
 [game.easy]
 max_rounds = 12
 candidate_count = 10
@@ -54,22 +57,45 @@ max_hints = 2
 
 # ─────────────────────────── 成语库路径 ───────────────────────────
 [idiom_library]
-# 三档难度的成语库 JSON 路径
+# 三档难度的成语库 JSON 路径,只会提取其中的四字成语使用，非四字成语自动丢弃
+# 每个成语的条目示例：
+# ```json
+# {
+#   "word": "暧昧不明",
+#   "pinyin": "ài mèi bù míng",
+#   "pinyin_r": "ai mei bu ming",
+#   "explanation": "暧昧含糊，不清楚。形容态度不明朗，关系不鲜明。"
+# }
 easy = "data/easy.json"
 medium = "data/medium.json"
 hard = "data/hard.json"
-# 干扰字库
+
+# 干扰字库，填充候选字使用的干扰字由此库抽取
+# 库中单字不得重复，每难度字数必须大于设置的候选字总数
+# 字库示例：
+# ```json
+# {
+#   "version": 2,
+#   "characters": {
+#       "low_difficulty": ["一", "二"],
+#       "medium_difficulty": ["三", "四"],
+#       "high_difficulty": ["五", "六"]
+#   }
+# }
 characters = "data/character.json"
 
 
-# ─────────────────────────── 日志 ───────────────────────────
+# ─────────────────────────── 日志 ───────────────────────────────
 [logging]
 # 日志级别：DEBUG / INFO / WARNING / ERROR
 level = "INFO"
-# 日志文件目录；留空 "" 则仅控制台输出
+
+# 日志文件目录；留空 "" 则仅控制台输出，关闭文件日志记录
 dir = "logs"
-# 日志文件名
+
+# 基础日志文件名
 filename = "app.log"
+
 # 按日期轮转保留的份数
 backup_count = 10
 
@@ -82,9 +108,9 @@ enabled = true
 # 清理多少天前创建的对局
 retention_days = 30
 
-# 清理模式：
-#   "all"         —— 清理所有过期对局，不论状态（won / lost / playing 均删除）
-#   "non_playing" —— 仅清理非 playing 状态的过期对局（推荐，避免误删正在进行的对局）
+# 对局清理模式：
+#   "all"         清理所有过期对局，不论状态（won / lost / playing 均删除）
+#   "non_playing" 仅清理非 playing 状态的对局（推荐，避免影响“上一局”功能）
 mode = "non_playing"
 
 # 后台清理任务执行间隔（秒），默认 3600 = 1 小时
@@ -94,31 +120,33 @@ interval_seconds = 3600
 run_on_startup = true
 
 
-# ─────────────────────────── 安全 ───────────────────────────
+# ─────────────────────────── 安全 ────────────────────────────────
 [security]
 # CORS 允许的来源列表，["*"] 表示全部
+# 推荐更改为前端所部署域名
 cors_origins = ["*"]
 
 # 可信任的代理来源 IP/CIDR 列表
 # 仅当请求直连 IP 命中此列表时，才采信 X-Forwarded-For / X-Real-IP 头获取客户端真实 IP
-# 默认仅信任本机；生产部署在反向代理后应加入代理服务器 IP。永远仅使用可信的代理服务器。
-# 使用 ["*"] 信任所有代理IP（适用于所有请求都经过反向代理的部署环境）
-trusted_proxies = ["127.0.0.1"]
+# 生产部署应修改为反向代理服务器或 CDN 对应 IP。请确保仅使用可信的代理服务器。
+# 使用 ["*"] 信任所有代理IP（适用于所有请求都经过反向代理的 Docker 等环境）
+trusted_proxies = ["*"]
 
 # 管理员接口（/api/admin/*）白名单 IP/CIDR
 # 为空列表时不做来源限制；设置后只有列表内 IP/CIDR 能访问管理员接口
+# 检验时会根据`trusted_proxies`策略采信代理 IP 头
 admin_allowlist = []
 
 
 # ─────────────────────────── 排行榜 ───────────────────────────
 [leaderboard]
-# 允许上传排行榜的最低对局数（不论 daily / unlimited）
+# 允许创建排行榜存档的最低对局数（不论 daily / unlimited）
 min_games_to_upload = 20
 
-# 追加战绩时至少需要的新记录数（少于该值不允许追加）
+# 向已存在存档追加战绩时至少需要的新记录数（少于该值不允许追加）
 min_new_records_to_append = 5
 
-# 多少天未更新的存档将被自动清理
+# 多少天未更新（追加）的存档将被自动清理
 inactive_days = 90
 
 # 前端展示的名次上限（前 N 名 + 用户自己的名次）
@@ -132,14 +160,15 @@ cookie_max_age_days = 365
 
 # ─────────────────────────── 前端配置 ───────────────────────────
 [frontend]
-# 部署域名
-listen_host="127.0.0.1"
+# 监听域名/IP，Docker 环境下应当指定为`0.0.0.0`并由反向代理服务器处理域名
+listen_host="0.0.0.0"
 
 # 启动模式
-# default: 启动一个静态资源服务器并启动前端，将后端托管在站点的/api目录下
-# backend: 不启动前端，只运行后端
+# default: 全栈模式，启动一个静态资源服务器并启动前端，将后端托管在站点的/api目录下
+# backend: 不启动前端，只运行后端 API 服务器
+# 使用 default 启动时，前端会使用`client/`下的文件提供服务。
 front_mode="default"
 
-# 前端js请求后端服务使用的token
-# 会在js中被硬编码，无法保障安全性，建议搭配后端token管理相关机制使用
+# 前端 js 请求后端服务使用的 token，初始化时会自动赋予 API 调用权限
+# 会在 js 中被硬编码后混淆，无法保障安全性，建议搭配后端 token 管理相关机制使用
 front_token="test-token"

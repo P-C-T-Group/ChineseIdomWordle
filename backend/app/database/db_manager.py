@@ -975,8 +975,9 @@ def add_daily_record(user_id: str, game_id: str, difficulty: str, mode: str, won
 
 def get_user_daily_record(user_id: str, play_date: str, mode: str) -> Optional[Dict[str, Any]]:
     """查询用户指定日期指定模式的日榜记录"""
-    import sqlite3
-    import pymysql
+
+    # import sqlite3
+    # import pymysql
     cfg = get_config()
     ph = _placeholder()
     try:
