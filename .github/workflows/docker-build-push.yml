@@ -39,7 +39,7 @@ jobs:
             NEW_VERSION=$(echo "$RELEASE_TAG" | sed 's/^v//' | awk -F. '{print $1"."$2}')
             echo "Release triggered, using version: $NEW_VERSION (from tag: $RELEASE_TAG)"
           else
-            # 非 Release 触发：获取最新 release 版本，自动递增补丁号
+            # 非 Release 触发：获取最新 release 主.次版本，使用提交短 hash 作为补丁号
             LATEST_RELEASE_TAG=$(curl -sL \
               -H "Accept: application/vnd.github+json" \
               -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
@@ -54,39 +54,14 @@ jobs:
               LATEST_MAJOR_MINOR=$(echo "$LATEST_RELEASE_TAG" | awk -F. '{print $1"."$2}')
             fi
             
+            # 获取当前提交的短 SHA（前 7 位）作为补丁标识
+            SHORT_SHA="${GITHUB_SHA::7}"
+            
             echo "Latest release tag: $LATEST_RELEASE_TAG"
             echo "Major.Minor version: $LATEST_MAJOR_MINOR"
+            echo "Commit short SHA: $SHORT_SHA"
             
-            # 分页拉取所有镜像标签，实时计算当前主.次版本下最大的补丁号
-            PAGE=1
-            MAX_PATCH=0
-            while true; do
-              # 获取当前页的补丁号并更新最大值
-              PAGE_PATCHES=$(curl -sL \
-                -H "Accept: application/vnd.github+json" \
-                -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
-                "${{ github.api_url }}/packages/container/c-i-wordle/versions?per_page=100&page=$PAGE" | \
-                jq -r '.[].metadata.container.tags[] // empty' 2>/dev/null | grep "^${LATEST_MAJOR_MINOR//./\\.}\\.[0-9]\+$" | sed "s/${LATEST_MAJOR_MINOR//./\\.}\\.//" | sort -n | tail -n1 || echo 0)
-              
-              if [ "$PAGE_PATCHES" -gt "$MAX_PATCH" ]; then
-                MAX_PATCH=$PAGE_PATCHES
-              fi
-              
-              # 如果当前页没有匹配的标签，说明已经遍历完
-              if [ "$PAGE_PATCHES" -eq 0 ]; then
-                break
-              fi
-              
-              PAGE=$((PAGE + 1))
-              # 最多查 10 页，避免无限循环
-              if [ $PAGE -gt 10 ]; then
-                break
-              fi
-            done
-            
-            PATCH=$((MAX_PATCH + 1))
-            
-            NEW_VERSION="${LATEST_MAJOR_MINOR}.${PATCH}"
+            NEW_VERSION="${LATEST_MAJOR_MINOR}.${SHORT_SHA}"
             echo "Non-release triggered, new version: $NEW_VERSION"
           fi
           
